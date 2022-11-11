@@ -1,13 +1,37 @@
 import wave
+import struct
+from dataclasses import dataclass
 
 import numpy as np
-from numpy.fft import rfft
 from matplotlib import pyplot as plt
 
 import gray
 import int4list
 import crc16
 import settings
+
+
+class ChecksumError(Exception):
+    def __init__(self, checksum_header: int, checksum_message: int):
+        super(f'Expected checksum {checksum_header} but message has checksum {checksum_message}')
+
+
+@dataclass
+class ReceivedMessage:
+    size: int
+    checksum: int
+    content: bytes
+
+    def __init__(self, data_bytes):
+        # Extract length and checksum from header (first 4 bytes)
+        self.size, self.checksum = struct.unpack('>HH', data_bytes[:4])
+
+        # Message after header
+        self.content = data_bytes[4:4+self.size]
+        message_checksum = crc16.crc16(self.content)
+
+        if self.checksum != message_checksum:
+            raise ChecksumError(self.checksum, message_checksum)
 
 
 def find_start(data_4bit):
@@ -27,7 +51,7 @@ def generate_frequencies():
     return f_list
 
 
-def FFT(x):
+def fft(x):
     y_fft = np.fft.rfft(x)
     y_fft = y_fft[:round(len(x)/2)]
     y_fft = np.abs(y_fft)
@@ -43,7 +67,7 @@ def audio_to_int4list(samples: np.ndarray) -> list[int]:
     for sample in range(0, len(samples) + 1, settings.SAMPLE_RATE // settings.BIT_RATE):
         if sample > 0:
             sinusoid = samples[previous_sample:sample]
-            s_fft = FFT(sinusoid)
+            s_fft = fft(sinusoid)
             f_loc = np.argmax(s_fft[0])
             f_val = s_fft[1][f_loc]
 
@@ -67,34 +91,18 @@ if __name__ == '__main__':
     samples = read_test_wav()
 
     data_4bit = audio_to_int4list(samples)
-    print(data_4bit)
+
     # Start after start marker
     data_4bit = data_4bit[find_start(data_4bit):]
+
     # Convert bytes to 4 bit integer list
     data_bytes = int4list.int4list_to_bytes(data_4bit)
-    # Stop at first zero byte
-    # TODO this will break when message/checksum contains null bytes, find a better way (like a start header that contains packet length and checksum)
-    data_bytes = data_bytes[:data_bytes.index(0)]
 
-    message_checksum = crc16.crc16(data_bytes[:-2])
+    message = ReceivedMessage(data_bytes)
 
-    if message_checksum >> 8 == data_bytes[-2] and message_checksum & 0xFF == data_bytes[-1]:
-        print('checksum valid')
-    else:
-        print('checksum incorrect')
-        print(message_checksum >> 8, message_checksum & 0xFF)
-        print(data_bytes[-2], data_bytes[-1])
-
-    print('message:', data_bytes[:-2].decode())
+    print('size:', message.size)
+    print('checksum:', hex(message.checksum))
+    print('message:', message.content.decode())
 
     plt.specgram(samples, Fs=settings.SAMPLE_RATE)
     plt.show()
-
-# def DetectStart():
-#     """
-#     startdetectie:
-#         detecteer een lengte van [samplesPerBit] met de frequentie [base_frequency]
-#     """
-#     X = FFT(wav_data[56000:61100])
-#     f_loc = np.argmax(X[0])
-#     f_val = X[1][f_loc]

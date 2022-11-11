@@ -1,5 +1,6 @@
 import sys
 import wave
+import struct
 
 import numpy as np
 
@@ -9,10 +10,8 @@ import int4list
 import settings
 
 
-x = np.arange(settings.SAMPLE_RATE // settings.BIT_RATE)
-
-
 def uint4_to_sine(data_4bit: list[int]) -> np.ndarray:
+    x = np.arange(settings.SAMPLE_RATE // settings.BIT_RATE)
     data = []
     tones = [gray.to_gray(uint4) for uint4 in data_4bit]
     tones.extend([0] * 8)
@@ -25,15 +24,14 @@ def uint4_to_sine(data_4bit: list[int]) -> np.ndarray:
 
 
 def data_to_audio(data: bytes) -> np.ndarray:
-    # Convert bytes to list of 4-bit integers
-    data_4bit = int4list.bytes_to_int4list(settings.START_MARKER + data)
-    # Append checksum, split up 16 bit checksum into 4-bit ints
     checksum = crc16.crc16(data)
-    for shift in (12, 8, 4, 0):
-        data_4bit.append((checksum >> shift) & 0xF)
-    print('Sending:', data)
-    print('Checksum: ', hex(checksum))
-    print('As 4 bit ints:', data_4bit)
+    size_checksum = struct.pack('>HH', len(data), checksum)
+    send_data = settings.START_MARKER + size_checksum + data
+    # Convert bytes to list of 4-bit integers
+    data_4bit = int4list.bytes_to_int4list(send_data)
+    print('message:', data)
+    print('size:', len(data))
+    print('checksum:', hex(checksum))
     return uint4_to_sine(data_4bit)
 
 
