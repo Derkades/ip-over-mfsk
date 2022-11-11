@@ -7,10 +7,11 @@ import gray
 import crc16
 
 
-frequency_spacing = 64
+START_MARKER = b'RAPHBIN'
+frequency_spacing = 512
 base_frequency = 1000
 sample_rate = 44100  # samples per second
-bit_rate = 15  # bits per second
+bit_rate = 16  # bits per second
 sendLength = 0
 samplesPerBit = sample_rate / bit_rate
 amplitude = np.iinfo(np.int16).max
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     data = input_text.encode()
 
     # Convert bytes to list of 4-bit integers
-    data_4bit = bytes_to_4bit(data)
+    data_4bit = bytes_to_4bit(START_MARKER + data)
 
     # Append checksum to data
     # Split up 16 bit checksum into 4 4-bit ints
