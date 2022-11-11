@@ -4,17 +4,16 @@ import struct
 
 import numpy as np
 
-import gray
+
 import crc16
-import int4list
+import tone_conversion
 import settings
+import smallgzip
 
 
-def uint4_to_sine(data_4bit: list[int]) -> np.ndarray:
-    x = np.arange(settings.SAMPLE_RATE // settings.BIT_RATE)
+def tones_to_sine(tones: list[int]) -> np.ndarray:
+    x = np.arange(settings.SAMPLE_RATE // settings.TONES_PER_SECOND)
     data = []
-    tones = [gray.to_gray(uint4) for uint4 in data_4bit]
-    tones.extend([0] * 8)
     for tone in tones:
         freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
         # print(f'{tone=}\t{freq=}')
@@ -24,15 +23,22 @@ def uint4_to_sine(data_4bit: list[int]) -> np.ndarray:
 
 
 def data_to_audio(data: bytes) -> np.ndarray:
+    if settings.DO_COMPRESS:
+        print('original size:', len(data))
+        print('original message:', data)
+        data = smallgzip.compress(data)
+
+    # TODO no need to send CRC16 when compression is enabled, saves 2 bytes
+
     checksum = crc16.crc16(data)
     size_checksum = struct.pack('>HH', len(data), checksum)
     send_data = settings.START_MARKER + size_checksum + data
-    # Convert bytes to list of 4-bit integers
-    data_4bit = int4list.bytes_to_int4list(send_data)
-    print('message:', data)
     print('size:', len(data))
+    print('message:', data)
     print('checksum:', hex(checksum))
-    return uint4_to_sine(data_4bit)
+    tones = tone_conversion.bytes_to_tones(send_data)
+    print('tones:', tones)
+    return tones_to_sine(tones)
 
 
 def write_test_wav(samples: np.ndarray) -> None:
@@ -51,6 +57,8 @@ if __name__ == '__main__':
 
     data = ' '.join(sys.argv[1:]).encode()
     sine = data_to_audio(data)
-    noise = np.random.normal(0, 1e4, 56000).astype('i2')
+    noise = np.random.normal(0,
+                             settings.OUTPUT_SURROUNDING_NOISE_LEVEL,
+                             int(settings.OUTPUT_SURROUNDING_NOISE_SECONDS * settings.SAMPLE_RATE)).astype('i2')
     signal = np.concatenate((noise, sine, noise))
     write_test_wav(signal)

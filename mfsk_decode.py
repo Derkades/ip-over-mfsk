@@ -4,16 +4,20 @@ from dataclasses import dataclass
 
 import numpy as np
 from matplotlib import pyplot as plt
+from sympy import print_maple_code
 
-import gray
-import int4list
 import crc16
 import settings
+import smallgzip
+import tone_conversion
+
+
+START_MARKER_TONES = tone_conversion.bytes_to_tones(settings.START_MARKER)
 
 
 class ChecksumError(Exception):
     def __init__(self, checksum_header: int, checksum_message: int):
-        super(f'Expected checksum {checksum_header} but message has checksum {checksum_message}')
+        super().__init__(f'Expected checksum {checksum_header} but message has checksum {checksum_message}')
 
 
 @dataclass
@@ -33,20 +37,22 @@ class ReceivedMessage:
         if self.checksum != message_checksum:
             raise ChecksumError(self.checksum, message_checksum)
 
+        if settings.DO_COMPRESS:
+            self.content = smallgzip.decompress(self.content)
 
-def find_start(data_4bit):
-    marker_ints = int4list.bytes_to_int4list(settings.START_MARKER)
+
+def find_start(tones):
     marker_pos = 0
-    for i, data in enumerate(data_4bit):
-        if data == marker_ints[marker_pos]:
+    for i, data in enumerate(tones):
+        if data == START_MARKER_TONES[marker_pos]:
             marker_pos += 1
-            if marker_pos == len(marker_ints):
+            if marker_pos == len(START_MARKER_TONES):
                 return i + 1
 
 
 def generate_frequencies():
     f_list = []
-    for i in range(16):
+    for i in range(2**settings.TONE_BITS):
         f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
     return f_list
 
@@ -60,11 +66,11 @@ def fft(x):
     return [y_fft, freq_x_axis]
 
 
-def audio_to_int4list(samples: np.ndarray) -> list[int]:
+def audio_to_tones(samples: np.ndarray) -> list[int]:
     previous_sample = 0
     mfsk_freqs = generate_frequencies()
-    gray_list = []
-    for sample in range(0, len(samples) + 1, settings.SAMPLE_RATE // settings.BIT_RATE):
+    tones = []
+    for sample in range(0, len(samples) + 1, settings.SAMPLE_RATE // settings.TONES_PER_SECOND):
         if sample > 0:
             sinusoid = samples[previous_sample:sample]
             s_fft = fft(sinusoid)
@@ -75,9 +81,9 @@ def audio_to_int4list(samples: np.ndarray) -> list[int]:
                 return abs(list_value - f_val)
 
             closest_freq = min(mfsk_freqs, key=abs_difference)
-            gray_list.append(mfsk_freqs.index(closest_freq))
+            tones.append(mfsk_freqs.index(closest_freq))
             previous_sample = sample
-    return [gray.from_gray(int4) for int4 in gray_list]
+    return tones
 
 
 def read_test_wav():
@@ -90,19 +96,23 @@ def read_test_wav():
 if __name__ == '__main__':
     samples = read_test_wav()
 
-    data_4bit = audio_to_int4list(samples)
+    tones = audio_to_tones(samples)
 
     # Start after start marker
-    data_4bit = data_4bit[find_start(data_4bit):]
+    tones = tones[find_start(tones):]
 
     # Convert bytes to 4 bit integer list
-    data_bytes = int4list.int4list_to_bytes(data_4bit)
+    data_bytes = tone_conversion.tones_to_bytes(tones)
 
-    message = ReceivedMessage(data_bytes)
-
-    print('size:', message.size)
-    print('checksum:', hex(message.checksum))
-    print('message:', message.content.decode())
+    try:
+        message = ReceivedMessage(data_bytes)
+        print('size:', message.size)
+        print('checksum:', hex(message.checksum))
+        print('message:', message.content.decode())
+    except ChecksumError as ex:
+        print('(!)', ex)
+        print('tones:', tones)
+        print('data_bytes:', data_bytes)
 
     plt.specgram(samples, Fs=settings.SAMPLE_RATE)
     plt.show()
