@@ -5,6 +5,7 @@ from scipy.io.wavfile import write
 
 import gray
 import crc16
+import int4list
 
 
 START_MARKER = b'RAPHBIN'
@@ -17,14 +18,6 @@ samplesPerBit = sample_rate / bit_rate
 amplitude = np.iinfo(np.int16).max
 fname = "mfsk.wav"
 x = np.arange(samplesPerBit)
-
-
-def bytes_to_4bit(data_8bit: bytes):
-    data_4bit = []
-    for byte in data_8bit:
-        data_4bit.append(byte >> 4)
-        data_4bit.append(byte & 0xF)
-    return data_4bit
 
 
 def uint4_to_sine(data_4bit):
@@ -50,7 +43,7 @@ if __name__ == '__main__':
     data = input_text.encode()
 
     # Convert bytes to list of 4-bit integers
-    data_4bit = bytes_to_4bit(START_MARKER + data)
+    data_4bit = int4list.bytes_to_int4list(START_MARKER + data)
 
     # Append checksum to data
     # Split up 16 bit checksum into 4 4-bit ints
@@ -62,6 +55,8 @@ if __name__ == '__main__':
     print('As 4 bit ints:', data_4bit)
 
     sine = uint4_to_sine(data_4bit)
-    sine = np.append(np.random.normal(0, 1e5, 56000), sine)
+    noise = np.random.normal(0, 1e5, 56000)
+    signal = np.concatenate((noise, sine, noise))
+    # sine = np.append(, sine)
     # print(sine[50:])
-    write(fname, sample_rate, sine.astype(np.dtype('i2')))
+    write(fname, sample_rate, signal.astype(np.dtype('i2')))
