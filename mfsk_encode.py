@@ -24,7 +24,7 @@ def uint4_to_sine(data_4bit: list[int]) -> np.ndarray:
     return np.array(data, dtype='i2') # signed 16-bit integers
 
 
-def data_to_sine(data: bytes) -> np.ndarray:
+def data_to_audio(data: bytes) -> np.ndarray:
     # Convert bytes to list of 4-bit integers
     data_4bit = int4list.bytes_to_int4list(settings.START_MARKER + data)
     # Append checksum, split up 16 bit checksum into 4-bit ints
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     data = ' '.join(sys.argv[1:]).encode()
-    sine = data_to_sine(data)
+    sine = data_to_audio(data)
     noise = np.random.normal(0, 1e4, 56000).astype('i2')
     signal = np.concatenate((noise, sine, noise))
     write_test_wav(signal)
