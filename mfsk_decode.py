@@ -13,6 +13,7 @@ import tone_conversion
 
 
 START_MARKER_TONES = tone_conversion.bytes_to_tones(settings.START_MARKER)
+print('START_MARKER_TONES', START_MARKER_TONES)
 
 
 class ChecksumError(Exception):
@@ -98,11 +99,13 @@ if __name__ == '__main__':
 
     tones = audio_to_tones(samples)
 
+    print('tones:', tones)
     # Start after start marker
     tones = tones[find_start(tones):]
 
     # Convert bytes to 4 bit integer list
     data_bytes = tone_conversion.tones_to_bytes(tones)
+    print('data_bytes:', data_bytes)
 
     try:
         message = ReceivedMessage(data_bytes)
@@ -111,8 +114,6 @@ if __name__ == '__main__':
         print('message:', message.content.decode())
     except ChecksumError as ex:
         print('(!)', ex)
-        print('tones:', tones)
-        print('data_bytes:', data_bytes)
 
-    plt.specgram(samples, Fs=settings.SAMPLE_RATE)
+    plt.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
     plt.show()

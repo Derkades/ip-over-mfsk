@@ -37,7 +37,6 @@ if __name__ == '__main__':
     compressed = compress(test_message)
     print('standard compressed', len(standard_compressed), standard_compressed)
     print('compressed', len(compressed), compressed)
-    # print('saved', len(standard_compressed) - len(compressed), 'bytes')
     decompressed = decompress(compressed)
     assert decompressed == test_message
     print(decompressed)
