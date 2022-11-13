@@ -1,10 +1,9 @@
 import wave
 import struct
 from dataclasses import dataclass
+import sys
 
 import numpy as np
-from matplotlib import pyplot as plt
-from sympy import print_maple_code
 
 import crc16
 import settings
@@ -12,8 +11,9 @@ import smallgzip
 import tone_conversion
 
 
+LJUST = 20
 START_MARKER_TONES = tone_conversion.bytes_to_tones(settings.START_MARKER)
-print('START_MARKER_TONES', START_MARKER_TONES)
+print('START_MARKER_TONES'.ljust(LJUST), START_MARKER_TONES)
 
 
 class ChecksumError(Exception):
@@ -104,7 +104,7 @@ def find_first_tone_midpoint(samples: np.ndarray) -> int:
                 tone_start = start_sample + settings.OUTPUT_SURROUNDING_NOISE_SECONDS * settings.SAMPLE_RATE
                 tone_length = settings.SAMPLE_RATE // settings.TONES_PER_SECOND
                 first_tone_mindpoint = tone_start + (tone_length // 2)
-                print(f'first tone midpoint: {first_tone_mindpoint / settings.SAMPLE_RATE:.2f} seconds')
+                print('first tone midpoint'.ljust(LJUST), f'{first_tone_mindpoint / settings.SAMPLE_RATE:.2f} seconds')
                 return first_tone_mindpoint
         else:
             start_sample = None
@@ -123,27 +123,29 @@ def read_test_wav():
 if __name__ == '__main__':
     samples = read_test_wav()
 
-    print(f'audio duration {len(samples) / settings.SAMPLE_RATE:.1f} seconds')
+    print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')
 
     first_tone_midpoint = find_first_tone_midpoint(samples)
 
     tones = audio_to_tones(samples, first_tone_midpoint)
 
-    print('tones:', tones)
+    print('tones:'.ljust(LJUST), tones)
     # Start after start marker
     tones = tones[find_start(tones):]
 
     # Convert bytes to 4 bit integer list
     data_bytes = tone_conversion.tones_to_bytes(tones)
-    print('data_bytes:', data_bytes)
+    print('data_bytes:'.ljust(LJUST), data_bytes)
 
     try:
         message = ReceivedMessage(data_bytes)
-        print('size:', message.size)
-        print('checksum:', hex(message.checksum))
-        print('message:', message.content.decode())
+        print('size:'.ljust(LJUST), message.size)
+        print('checksum:'.ljust(LJUST), hex(message.checksum))
+        print('message:'.ljust(LJUST), message.content.decode())
     except ChecksumError as ex:
-        print('(!)', ex)
+        print('(!)'.ljust(LJUST), ex)
 
-    plt.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
-    plt.show()
+    if len(sys.argv) > 1 and sys.argv[1] == 'plot':
+        from matplotlib import pyplot as plt
+        plt.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
+        plt.show()
