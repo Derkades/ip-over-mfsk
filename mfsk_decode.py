@@ -67,13 +67,13 @@ def fft(x):
     return [y_fft, freq_x_axis]
 
 
-def audio_to_tones(samples: np.ndarray) -> list[int]:
-    previous_sample = 0
+def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
+    read_size = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // 3
     mfsk_freqs = generate_frequencies()
     tones = []
-    for sample in range(0, len(samples) + 1, settings.SAMPLE_RATE // settings.TONES_PER_SECOND):
+    for sample in range(start, len(samples), settings.SAMPLE_RATE // settings.TONES_PER_SECOND):
         if sample > 0:
-            sinusoid = samples[previous_sample:sample]
+            sinusoid = samples[sample-read_size:sample+read_size]
             s_fft = fft(sinusoid)
             f_loc = np.argmax(s_fft[0])
             f_val = s_fft[1][f_loc]
@@ -83,8 +83,34 @@ def audio_to_tones(samples: np.ndarray) -> list[int]:
 
             closest_freq = min(mfsk_freqs, key=abs_difference)
             tones.append(mfsk_freqs.index(closest_freq))
-            previous_sample = sample
     return tones
+
+
+def find_first_tone_midpoint(samples: np.ndarray) -> int:
+    group_by = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // 8
+    min_count = (settings.OUTPUT_SURROUNDING_NOISE_SECONDS * 0.9 * settings.SAMPLE_RATE) // group_by
+    start_sample = None
+    count = 0
+    for i in range(0, len(samples) - group_by, group_by):
+        level = np.sum(np.abs(samples[i:i+group_by]))
+
+        if level > settings.INPUT_PRE_NOISE_LEVEL*group_by:
+            count += 1
+            if count == 1:
+                start_sample = i
+                # print('noise start seconds:', i / settings.SAMPLE_RATE)
+                # print('noise start level:', level // group_by)
+            elif count > min_count:
+                tone_start = start_sample + settings.OUTPUT_SURROUNDING_NOISE_SECONDS * settings.SAMPLE_RATE
+                tone_length = settings.SAMPLE_RATE // settings.TONES_PER_SECOND
+                first_tone_mindpoint = tone_start + (tone_length // 2)
+                print(f'first tone midpoint: {first_tone_mindpoint / settings.SAMPLE_RATE:.2f} seconds')
+                return first_tone_mindpoint
+        else:
+            start_sample = None
+            count = 0
+
+    raise ValueError('could not identify start')
 
 
 def read_test_wav():
@@ -97,7 +123,11 @@ def read_test_wav():
 if __name__ == '__main__':
     samples = read_test_wav()
 
-    tones = audio_to_tones(samples)
+    print(f'audio duration {len(samples) / settings.SAMPLE_RATE:.1f} seconds')
+
+    first_tone_midpoint = find_first_tone_midpoint(samples)
+
+    tones = audio_to_tones(samples, first_tone_midpoint)
 
     print('tones:', tones)
     # Start after start marker
