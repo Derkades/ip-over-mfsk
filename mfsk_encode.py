@@ -14,23 +14,25 @@ import smallgzip
 
 
 def reduce_click(samples: np.ndarray):
-    # Ensure sine wave ends at approx zero, at the end of a period
-    prev_sample = samples[-1]
-    for i in range(2, len(samples) + 1):
-        sample = samples[-i]
-        if sample < 0 and prev_sample > 0:
-            # Reached zero crossing point
-            for j in range(-i+1, 0):
-                samples[j] = 0
-            break
-        prev_sample = sample
+    if settings.ANTICLICK_STOP_AT_FULL_PERIOD:
+        # Ensure sine wave ends at approx zero, at the end of a period
+        prev_sample = samples[-1]
+        for i in range(2, len(samples) + 1):
+            sample = samples[-i]
+            if sample < 0 and prev_sample > 0:
+                # Reached zero crossing point
+                for j in range(-i+1, 0):
+                    samples[j] = 0
+                break
+            prev_sample = sample
 
-    # Add fade-in and fade-out
-    fade_count = len(samples) // settings.TONES_PER_SECOND // 8
-    for i in range(0, fade_count):
-        vol_ratio = i / fade_count
-        samples[i] = int(samples[i] * vol_ratio)  # fade-in
-        samples[-i-1] = int(samples[-i-1] * vol_ratio)  # fade-out
+    if settings.ANTICLICK_FADE:
+        # Add fade-in and fade-out
+        fade_count = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // settings.ANTICLICK_FADE_AMOUNT
+        for i in range(0, fade_count):
+            vol_ratio = i / fade_count
+            samples[i] = int(samples[i] * vol_ratio)  # fade-in
+            samples[-i-1] = int(samples[-i-1] * vol_ratio)  # fade-out
 
 
 def tones_to_sine(tones: list[int]) -> np.ndarray:
