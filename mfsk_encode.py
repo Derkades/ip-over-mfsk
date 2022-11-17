@@ -4,13 +4,10 @@ import struct
 
 import numpy as np
 
-
 import crc16
 import tone_conversion
 import settings
 import smallgzip
-
-# np.set_printoptions(threshold=sys.maxsize)
 
 
 def reduce_click(samples: np.ndarray):
@@ -28,7 +25,7 @@ def reduce_click(samples: np.ndarray):
 
     if settings.ANTICLICK_FADE:
         # Add fade-in and fade-out
-        fade_count = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // settings.ANTICLICK_FADE_AMOUNT
+        fade_count = settings.SAMPLES_PER_TONE // settings.ANTICLICK_FADE_AMOUNT
         for i in range(0, fade_count):
             vol_ratio = i / fade_count
             samples[i] = int(samples[i] * vol_ratio)  # fade-in
@@ -36,7 +33,7 @@ def reduce_click(samples: np.ndarray):
 
 
 def tones_to_sine(tones: list[int]) -> np.ndarray:
-    x = np.arange(settings.SAMPLE_RATE // settings.TONES_PER_SECOND)
+    x = np.arange(settings.SAMPLES_PER_TONE)
     data = []
     for tone in tones:
         freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
@@ -83,7 +80,7 @@ if __name__ == '__main__':
     data = ' '.join(sys.argv[1:]).encode()
     sine = data_to_audio(data)
     noise = np.random.normal(0,
-                             settings.OUTPUT_SURROUNDING_NOISE_LEVEL,
-                             int(settings.OUTPUT_SURROUNDING_NOISE_SECONDS * settings.SAMPLE_RATE)).astype('i2')
-    signal = np.concatenate((noise, sine, noise))
+                             settings.OUTPUT_PRE_NOISE_LEVEL,
+                             int(settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE)).astype('i2')
+    signal = np.concatenate((noise, sine))
     write_test_wav(signal)

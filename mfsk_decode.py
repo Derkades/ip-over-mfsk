@@ -2,6 +2,7 @@ import wave
 import struct
 from dataclasses import dataclass
 import sys
+from typing import Optional
 
 import numpy as np
 
@@ -58,6 +59,9 @@ def generate_frequencies():
     return f_list
 
 
+TONE_FREQUENCIES = generate_frequencies()
+
+
 def fft(x):
     y_fft = np.fft.rfft(x)
     y_fft = y_fft[:round(len(x)/2)]
@@ -67,28 +71,28 @@ def fft(x):
     return [y_fft, freq_x_axis]
 
 
+def audio_to_tone(samples: np.ndarray) -> list[int]:
+    s_fft = fft(samples)
+    f_loc = np.argmax(s_fft[0])
+    f_val = s_fft[1][f_loc]
+    def abs_difference(list_value):
+        return abs(list_value - f_val)
+    closest_freq = min(TONE_FREQUENCIES, key=abs_difference)
+    return TONE_FREQUENCIES.index(closest_freq)
+
+
 def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
-    read_size = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // 3
-    mfsk_freqs = generate_frequencies()
+    read_size = settings.SAMPLES_PER_TONE // 3
     tones = []
-    for sample in range(start, len(samples), settings.SAMPLE_RATE // settings.TONES_PER_SECOND):
-        if sample > 0:
-            sinusoid = samples[sample-read_size:sample+read_size]
-            s_fft = fft(sinusoid)
-            f_loc = np.argmax(s_fft[0])
-            f_val = s_fft[1][f_loc]
-
-            def abs_difference(list_value):
-                return abs(list_value - f_val)
-
-            closest_freq = min(mfsk_freqs, key=abs_difference)
-            tones.append(mfsk_freqs.index(closest_freq))
+    for sample in range(start, len(samples), settings.SAMPLES_PER_TONE):
+        tone_samples = samples[sample-read_size:sample+read_size]
+        tones.append(audio_to_tone(tone_samples))
     return tones
 
 
-def find_first_tone_midpoint(samples: np.ndarray) -> int:
-    group_by = settings.SAMPLE_RATE // settings.TONES_PER_SECOND // 8
-    min_count = (settings.OUTPUT_SURROUNDING_NOISE_SECONDS * 0.9 * settings.SAMPLE_RATE) // group_by
+def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
+    group_by = settings.SAMPLES_PER_TONE // 8
+    min_count = (settings.OUTPUT_PRE_NOISE_SECONDS * 0.9 * settings.SAMPLE_RATE) // group_by
     start_sample = None
     count = 0
     for i in range(0, len(samples) - group_by, group_by):
@@ -101,16 +105,15 @@ def find_first_tone_midpoint(samples: np.ndarray) -> int:
                 # print('noise start seconds:', i / settings.SAMPLE_RATE)
                 # print('noise start level:', level // group_by)
             elif count > min_count:
-                tone_start = start_sample + settings.OUTPUT_SURROUNDING_NOISE_SECONDS * settings.SAMPLE_RATE
-                tone_length = settings.SAMPLE_RATE // settings.TONES_PER_SECOND
-                first_tone_mindpoint = tone_start + (tone_length // 2)
+                tone_start = start_sample + settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE
+                first_tone_mindpoint = tone_start + (settings.SAMPLES_PER_TONE // 2)
                 print('first tone midpoint'.ljust(LJUST), f'{first_tone_mindpoint / settings.SAMPLE_RATE:.2f} seconds')
                 return first_tone_mindpoint
         else:
             start_sample = None
             count = 0
 
-    raise ValueError('could not identify start')
+    return None
 
 
 def read_test_wav():
@@ -125,7 +128,15 @@ if __name__ == '__main__':
 
     print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')
 
-    first_tone_midpoint = find_first_tone_midpoint(samples)
+    # first_tone_midpoint = find_first_tone_midpoint(samples)
+
+    # print('first_tone_midpoint', first_tone_midpoint)
+
+    # if first_tone_midpoint is None:
+    #     raise ValueError('could not identify start')
+
+    first_tone_midpoint = int(3.67 * settings.SAMPLE_RATE)
+    print('first_tone_midpoint', first_tone_midpoint)
 
     tones = audio_to_tones(samples, first_tone_midpoint)
 
