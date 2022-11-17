@@ -83,7 +83,7 @@ def audio_to_tone(samples: np.ndarray) -> list[int]:
 
 
 def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
-    read_size = settings.SAMPLES_PER_TONE // 3
+    read_size = settings.SAMPLES_PER_TONE // settings.INPUT_READ_SIZE
     tones = []
     for sample in range(start, len(samples), settings.SAMPLES_PER_TONE):
         tone_samples = samples[sample-read_size:sample+read_size]
