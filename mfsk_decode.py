@@ -55,7 +55,8 @@ def find_start(tones):
 def generate_frequencies():
     f_list = []
     for i in range(2**settings.TONE_BITS):
-        f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
+        # f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
+        f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i**1.5)
     return f_list
 
 
@@ -106,9 +107,8 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
                 # print('noise start level:', level // group_by)
             elif count > min_count:
                 tone_start = start_sample + settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE
-                first_tone_mindpoint = tone_start + (settings.SAMPLES_PER_TONE // 2)
-                print('first tone midpoint'.ljust(LJUST), f'{first_tone_mindpoint / settings.SAMPLE_RATE:.2f} seconds')
-                return first_tone_mindpoint
+                first_tone_midpoint = tone_start + (settings.SAMPLES_PER_TONE // 2)
+                return first_tone_midpoint
         else:
             start_sample = None
             count = 0
@@ -128,15 +128,17 @@ if __name__ == '__main__':
 
     print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')
 
-    # first_tone_midpoint = find_first_tone_midpoint(samples)
+    first_tone_midpoint = find_first_tone_midpoint(samples)
 
+    print('first_tone_midpoint', first_tone_midpoint)
+
+    if first_tone_midpoint is None:
+        raise ValueError('could not identify start')
+
+    # first_tone_midpoint = int(4.95 * settings.SAMPLE_RATE)
     # print('first_tone_midpoint', first_tone_midpoint)
 
-    # if first_tone_midpoint is None:
-    #     raise ValueError('could not identify start')
-
-    first_tone_midpoint = int(3.67 * settings.SAMPLE_RATE)
-    print('first_tone_midpoint', first_tone_midpoint)
+    print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
 
     tones = audio_to_tones(samples, first_tone_midpoint)
 
