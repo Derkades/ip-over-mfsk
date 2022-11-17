@@ -3,8 +3,8 @@ import numpy as np
 START_MARKER = b'rbn'
 SAMPLE_RATE = 48_000
 TEST_WAV = 'test.wav'
-FREQ_BASE = 512
-FREQ_SPACE = 64
+FREQ_BASE = 1024
+FREQ_SPACE = 256
 # FREQ_EXP_BASE = 1.5
 OUTPUT_MAX = np.iinfo(np.int16).max
 DO_COMPRESS = False

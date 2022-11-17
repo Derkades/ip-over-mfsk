@@ -55,8 +55,8 @@ def find_start(tones):
 def generate_frequencies():
     f_list = []
     for i in range(2**settings.TONE_BITS):
-        # f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
-        f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i**1.5)
+        f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
+        # f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i**1.5)
     return f_list
 
 

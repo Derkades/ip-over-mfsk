@@ -36,8 +36,8 @@ def tones_to_sine(tones: list[int]) -> np.ndarray:
     x = np.arange(settings.SAMPLES_PER_TONE)
     data = []
     for tone in tones:
-        # freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
-        freq = settings.FREQ_BASE + tone ** 1.5 * settings.FREQ_SPACE
+        freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
+        # freq = settings.FREQ_BASE + tone ** 1.5 * settings.FREQ_SPACE
         wave = settings.OUTPUT_MAX * np.sin(2 * np.pi * freq * x / settings.SAMPLE_RATE)
         reduce_click(wave)
         data.extend(wave)
