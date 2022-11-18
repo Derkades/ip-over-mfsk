@@ -62,7 +62,7 @@ def data_to_audio(data: bytes) -> np.ndarray:
     print('header_bytes', header_bytes)
     tones = tone_conversion.bytes_to_tones(send_data)
     sync_signal = np.repeat(-1, settings.OUTPUT_PRE_NOISE_SECONDS * settings.TONES_PER_SECOND)
-    tones = np.append(sync_signal, tones)
+    tones = np.concatenate((sync_signal, tones, sync_signal))
     print('tones:', tones)
     return tones_to_sine(tones)
 

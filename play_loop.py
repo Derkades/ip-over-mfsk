@@ -10,9 +10,9 @@ sd.default.samplerate = settings.SAMPLE_RATE
 
 
 if __name__ == '__main__':
+    samples = mfsk_decode.read_test_wav()
     while True:
         print('play')
-        samples = mfsk_decode.read_test_wav()
         sd.play(samples)
         sd.wait()
 

@@ -24,7 +24,7 @@ tones = []
 def get_buffer_as_array_starting_from_zero():
     copy = np.zeros(settings.RECORD_BUFFER_SIZE, dtype='i2')
     for i in range(0, settings.RECORD_BUFFER_SIZE):
-        copy[i] = sample_buffer[(buffer_pos + i) % settings.settings.RECORD_BUFFER_SIZE]
+        copy[i] = sample_buffer[(buffer_pos + i) % settings.RECORD_BUFFER_SIZE]
     return copy
 
 
@@ -33,7 +33,7 @@ def callback(indata: np.ndarray, frames: int,
     global buffer_pos, samples_since_process
 
     for i in range(frames):
-        sample_buffer[buffer_pos % settings.RECORD_BUFFER_SIZE] = indata[i]
+        sample_buffer[buffer_pos % settings.RECORD_BUFFER_SIZE] = indata[i] * settings.OUTPUT_MAX
         buffer_pos += 1
 
     samples_since_process += frames
@@ -45,14 +45,15 @@ def callback(indata: np.ndarray, frames: int,
 def process_recording():
     global buffer_pos, input_state, next_tone_pos
     print('buffer_pos:', buffer_pos, buffer_pos % settings.RECORD_BUFFER_SIZE)
+    samples = get_buffer_as_array_starting_from_zero()
 
     if input_state == InputState.WAITING:
-        first_midpoint = mfsk_decode.find_first_tone_midpoint(sample_buffer)
+        first_midpoint = mfsk_decode.find_first_tone_midpoint(samples)
         if first_midpoint is not None:
             next_tone_pos = (first_midpoint + buffer_pos) % settings.RECORD_BUFFER_SIZE
             print('> found first midpoint at', first_midpoint, next_tone_pos)
         else:
-            print('> waiting for noise')
+            print('> waiting for sync')
     elif input_state == InputState.RECEIVING:
         print('receiving')
         # Check if we have received a full tone (half tone length past midpoint)

@@ -93,13 +93,12 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     count = 0
     for i in range(0, len(samples) - group_by, group_by):
         tone = audio_to_tone(samples[i:i+group_by])
+        # print('tone', tone, 'count', count)
 
         if tone == -1:
             count += 1
             if count == 1:
                 start_sample = i
-                # print('noise start seconds:', i / settings.SAMPLE_RATE)
-                # print('noise start level:', level // group_by)
             elif count > min_count:
                 tone_start = start_sample + settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE
                 first_tone_midpoint = int(tone_start + settings.SAMPLES_PER_TONE / 2)
