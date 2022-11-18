@@ -56,11 +56,7 @@ def generate_frequencies():
     f_list = []
     for i in range(2**settings.TONE_BITS):
         f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i)
-        # f_list.append(settings.FREQ_BASE + settings.FREQ_SPACE * i**1.5)
     return f_list
-
-
-TONE_FREQUENCIES = generate_frequencies()
 
 
 def fft(x):
@@ -76,10 +72,9 @@ def audio_to_tone(samples: np.ndarray) -> list[int]:
     s_fft = fft(samples)
     f_loc = np.argmax(s_fft[0])
     f_val = s_fft[1][f_loc]
-    def abs_difference(list_value):
-        return abs(list_value - f_val)
-    closest_freq = min(TONE_FREQUENCIES, key=abs_difference)
-    return TONE_FREQUENCIES.index(closest_freq)
+    tone = round((f_val - settings.FREQ_BASE) / settings.FREQ_SPACE)
+    # print(f'{f_val:.2f} -> {tone}')
+    return tone
 
 
 def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
@@ -97,9 +92,9 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     start_sample = None
     count = 0
     for i in range(0, len(samples) - group_by, group_by):
-        level = np.sum(np.abs(samples[i:i+group_by]))
+        tone = audio_to_tone(samples[i:i+group_by])
 
-        if level > settings.INPUT_PRE_NOISE_LEVEL*group_by:
+        if tone == -1:
             count += 1
             if count == 1:
                 start_sample = i
@@ -107,7 +102,7 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
                 # print('noise start level:', level // group_by)
             elif count > min_count:
                 tone_start = start_sample + settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE
-                first_tone_midpoint = tone_start + (settings.SAMPLES_PER_TONE // 2)
+                first_tone_midpoint = int(tone_start + settings.SAMPLES_PER_TONE / 2)
                 return first_tone_midpoint
         else:
             start_sample = None
@@ -116,7 +111,7 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     return None
 
 
-def read_test_wav():
+def read_test_wav() -> np.ndarray:
     with wave.open(settings.TEST_WAV, 'rb') as wave_reader:
         max_frames = 16*1024*1024 # max 32 MiB memory usage
         frame_bytes = wave_reader.readframes(max_frames)
@@ -130,13 +125,8 @@ if __name__ == '__main__':
 
     first_tone_midpoint = find_first_tone_midpoint(samples)
 
-    print('first_tone_midpoint', first_tone_midpoint)
-
     if first_tone_midpoint is None:
         raise ValueError('could not identify start')
-
-    # first_tone_midpoint = int(4.95 * settings.SAMPLE_RATE)
-    # print('first_tone_midpoint', first_tone_midpoint)
 
     print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
 

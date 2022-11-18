@@ -37,6 +37,7 @@ def tones_to_sine(tones: list[int]) -> np.ndarray:
     data = []
     for tone in tones:
         freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
+        print('freq', freq)
         # freq = settings.FREQ_BASE + tone ** 1.5 * settings.FREQ_SPACE
         wave = settings.OUTPUT_MAX * np.sin(2 * np.pi * freq * x / settings.SAMPLE_RATE)
         reduce_click(wave)
@@ -60,6 +61,8 @@ def data_to_audio(data: bytes) -> np.ndarray:
     print('checksum:', hex(checksum))
     print('header_bytes', header_bytes)
     tones = tone_conversion.bytes_to_tones(send_data)
+    sync_signal = np.repeat(-1, settings.OUTPUT_PRE_NOISE_SECONDS * settings.TONES_PER_SECOND)
+    tones = np.append(sync_signal, tones)
     print('tones:', tones)
     return tones_to_sine(tones)
 
@@ -74,14 +77,17 @@ def write_test_wav(samples: np.ndarray) -> None:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print('Please provide message as command line argument')
+    if len(sys.argv) < 3:
+        print('Please provide play/write and message as command line argument')
         sys.exit(1)
 
-    data = ' '.join(sys.argv[1:]).encode()
-    sine = data_to_audio(data)
-    noise = np.random.normal(0,
-                             settings.OUTPUT_PRE_NOISE_LEVEL,
-                             int(settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE)).astype('i2')
-    signal = np.concatenate((noise, sine))
-    write_test_wav(signal)
+    data = ' '.join(sys.argv[2:]).encode()
+    signal = data_to_audio(data)
+    if sys.argv[1] == 'write':
+        write_test_wav(signal)
+    elif sys.argv[1] == 'play':
+        import sounddevice as sd
+        sd.play(signal, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
+    else:
+        print('Error: expecting first argument "play" or "write"')
+        sys.exit(1)
