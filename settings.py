@@ -1,29 +1,27 @@
 import numpy as np
 
-START_MARKER = b'rbn'
 SAMPLE_RATE = 44_100
 TEST_WAV = 'test.wav'
 FREQ_BASE = 1024
 FREQ_SPACE = 128
-# FREQ_EXP_BASE = 1.5
 OUTPUT_MAX = np.iinfo(np.int16).max
 DO_COMPRESS = False
-TONES_PER_SECOND = 10
+TONES_PER_SECOND = 4
 TONE_BITS = 4
-SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
-
-OUTPUT_PRE_NOISE_SECONDS = 0.5
-OUTPUT_PRE_NOISE_LEVEL = 1e5
-INPUT_PRE_NOISE_LEVEL = 1e2
-INPUT_READ_SIZE = 2
+SYNC_TONES = 4
+INPUT_READ_SIZE = 3  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
 
 ANTICLICK_STOP_AT_FULL_PERIOD = False
 ANTICLICK_FADE = True
-ANTICLICK_FADE_AMOUNT = 4  # 16 means 1/16th of a tone used for fade-in and fade-out
+ANTICLICK_FADE_AMOUNT = 16  # 16 means 1/16th of a tone used for fade-in and fade-out
 
 RECORD_CHUNK_SIZE = 1
 RECORD_BUFFER_SIZE = 256*1024
-RECORD_PROCESS_INTERVAL = 0.5
+RECORD_PROCESS_INTERVAL = 1
 
-if OUTPUT_PRE_NOISE_SECONDS * TONES_PER_SECOND != float(int(OUTPUT_PRE_NOISE_SECONDS * TONES_PER_SECOND)):
-    raise ValueError()
+SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
+SYNC_START_TONE = -1
+SYNC_END_TONE = 2**TONE_BITS
+
+# Must process at least once before buffer is overwritten completely, or data is lost
+assert RECORD_PROCESS_INTERVAL * SAMPLE_RATE < RECORD_BUFFER_SIZE

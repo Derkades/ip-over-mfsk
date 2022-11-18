@@ -13,8 +13,6 @@ import tone_conversion
 
 
 LJUST = 20
-START_MARKER_TONES = tone_conversion.bytes_to_tones(settings.START_MARKER)
-print('START_MARKER_TONES'.ljust(LJUST), START_MARKER_TONES)
 
 
 class ChecksumError(Exception):
@@ -24,16 +22,15 @@ class ChecksumError(Exception):
 
 @dataclass
 class ReceivedMessage:
-    size: int
     checksum: int
     content: bytes
 
     def __init__(self, data_bytes):
-        # Extract length and checksum from header (first 4 bytes)
-        self.size, self.checksum = struct.unpack('>HH', data_bytes[:4])
+        # Extract checksum (first 2 bytes)
+        self.checksum, = struct.unpack('>H', data_bytes[:2])
 
         # Message after header
-        self.content = data_bytes[4:4+self.size]
+        self.content = data_bytes[2:]
         message_checksum = crc16.crc16(self.content)
 
         if self.checksum != message_checksum:
@@ -41,15 +38,6 @@ class ReceivedMessage:
 
         if settings.DO_COMPRESS:
             self.content = smallgzip.decompress(self.content)
-
-
-def find_start(tones):
-    marker_pos = 0
-    for i, data in enumerate(tones):
-        if data == START_MARKER_TONES[marker_pos]:
-            marker_pos += 1
-            if marker_pos == len(START_MARKER_TONES):
-                return i + 1
 
 
 def generate_frequencies():
@@ -73,7 +61,6 @@ def audio_to_tone(samples: np.ndarray) -> list[int]:
     f_loc = np.argmax(s_fft[0])
     f_val = s_fft[1][f_loc]
     tone = round((f_val - settings.FREQ_BASE) / settings.FREQ_SPACE)
-    # print(f'{f_val:.2f} -> {tone}')
     return tone
 
 
@@ -82,13 +69,16 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
     tones = []
     for sample in range(start, len(samples), settings.SAMPLES_PER_TONE):
         tone_samples = samples[sample-read_size:sample+read_size]
-        tones.append(audio_to_tone(tone_samples))
+        tone = audio_to_tone(tone_samples)
+        if tone == settings.SYNC_END_TONE:
+            break
+        tones.append(tone)
     return tones
 
 
 def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     group_by = settings.SAMPLES_PER_TONE // 8
-    min_count = (settings.OUTPUT_PRE_NOISE_SECONDS * 0.9 * settings.SAMPLE_RATE) // group_by
+    min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.8 / settings.TONES_PER_SECOND / group_by)
     start_sample = None
     count = 0
     for i in range(0, len(samples) - group_by, group_by):
@@ -100,8 +90,8 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
             if count == 1:
                 start_sample = i
             elif count > min_count:
-                tone_start = start_sample + settings.OUTPUT_PRE_NOISE_SECONDS * settings.SAMPLE_RATE
-                first_tone_midpoint = int(tone_start + settings.SAMPLES_PER_TONE / 2)
+                tone_start_sample = start_sample + settings.SYNC_TONES / settings.TONES_PER_SECOND * settings.SAMPLE_RATE
+                first_tone_midpoint = int(tone_start_sample + settings.SAMPLES_PER_TONE / 2)
                 return first_tone_midpoint
         else:
             start_sample = None
@@ -132,16 +122,14 @@ if __name__ == '__main__':
     tones = audio_to_tones(samples, first_tone_midpoint)
 
     print('tones:'.ljust(LJUST), tones)
-    # Start after start marker
-    tones = tones[find_start(tones):]
 
     # Convert bytes to 4 bit integer list
     data_bytes = tone_conversion.tones_to_bytes(tones)
     print('data_bytes:'.ljust(LJUST), data_bytes)
+    print('message size:'.ljust(LJUST), len(data_bytes) - 2)
 
     try:
         message = ReceivedMessage(data_bytes)
-        print('size:'.ljust(LJUST), message.size)
         print('checksum:'.ljust(LJUST), hex(message.checksum))
         print('message:'.ljust(LJUST), message.content.decode())
     except ChecksumError as ex:

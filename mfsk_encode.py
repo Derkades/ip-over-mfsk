@@ -37,8 +37,6 @@ def tones_to_sine(tones: list[int]) -> np.ndarray:
     data = []
     for tone in tones:
         freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
-        print('freq', freq)
-        # freq = settings.FREQ_BASE + tone ** 1.5 * settings.FREQ_SPACE
         wave = settings.OUTPUT_MAX * np.sin(2 * np.pi * freq * x / settings.SAMPLE_RATE)
         reduce_click(wave)
         data.extend(wave)
@@ -54,15 +52,16 @@ def data_to_audio(data: bytes) -> np.ndarray:
     # TODO no need to send CRC16 when compression is enabled, saves 2 bytes
 
     checksum = crc16.crc16(data)
-    header_bytes = struct.pack('>HH', len(data), checksum)
-    send_data = settings.START_MARKER + header_bytes + data
+    header_bytes = struct.pack('>H', checksum)
+    send_data = header_bytes + data
     print('size:', len(data))
     print('message:', data)
     print('checksum:', hex(checksum))
     print('header_bytes', header_bytes)
     tones = tone_conversion.bytes_to_tones(send_data)
-    sync_signal = np.repeat(-1, settings.OUTPUT_PRE_NOISE_SECONDS * settings.TONES_PER_SECOND)
-    tones = np.concatenate((sync_signal, tones, sync_signal))
+    start_sync = np.repeat(-1, settings.SYNC_TONES)
+    end_sync = np.repeat(2**settings.TONE_BITS, settings.SYNC_TONES)
+    tones = np.concatenate((start_sync, tones, end_sync))
     print('tones:', tones)
     return tones_to_sine(tones)
 
