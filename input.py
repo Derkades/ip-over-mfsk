@@ -81,7 +81,8 @@ def process_recording():
                 if tone == settings.SYNC_END_TONE:
                     print('...end tone!')
                     input_state = InputState.IGNORE_END_TONES
-                    print(tone_conversion.tones_to_bytes(tones))
+                    print('tones', tones)
+                    print('bytes', tone_conversion.tones_to_bytes(tones))
                     tones = []
                     break
                 elif tone < 0 or tone > 2**settings.TONE_BITS:

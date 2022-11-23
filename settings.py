@@ -9,7 +9,7 @@ DO_COMPRESS = False
 TONES_PER_SECOND = 4
 TONE_BITS = 4
 SYNC_TONES = 4
-INPUT_READ_FRACTION = 3  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
+INPUT_READ_FRACTION = 6  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
 
 ANTICLICK_STOP_AT_FULL_PERIOD = False
 ANTICLICK_FADE = True

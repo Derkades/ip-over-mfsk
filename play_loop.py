@@ -5,7 +5,7 @@ import sounddevice as sd
 import settings
 import mfsk_decode
 
-sd.default.latency = 'high'
+sd.default.latency = ('hight', 'high')
 sd.default.samplerate = settings.SAMPLE_RATE
 
 
