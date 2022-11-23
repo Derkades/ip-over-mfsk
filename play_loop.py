@@ -16,4 +16,4 @@ if __name__ == '__main__':
         sd.play(samples)
         sd.wait()
 
-        time.sleep(2)
+        time.sleep(3)
