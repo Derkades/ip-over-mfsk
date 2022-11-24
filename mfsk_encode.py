@@ -81,12 +81,21 @@ if __name__ == '__main__':
         sys.exit(1)
 
     data = ' '.join(sys.argv[2:]).encode()
-    signal = data_to_audio(data)
+    noise = np.random.uniform(low=-settings.PRE_NOISE_LEVEL,
+                              high=settings.PRE_NOISE_LEVEL,
+                              size=settings.PRE_NOISE_SAMPLES).astype('i2')
+    samples = np.append(noise, data_to_audio(data))
+
     if sys.argv[1] == 'write':
-        write_test_wav(signal)
+        write_test_wav(samples)
     elif sys.argv[1] == 'play':
         import sounddevice as sd
-        sd.play(signal, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
+
+        while True:
+            print('play')
+            sd.play(samples, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
+            sd.sleep(1000)
+            print('done')
     else:
         print('Error: expecting first argument "play" or "write"')
         sys.exit(1)

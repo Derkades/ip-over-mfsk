@@ -7,6 +7,7 @@ import numpy as np
 
 import settings
 import mfsk_decode
+from mfsk_decode import ReceivedMessage, ChecksumError
 import tone_conversion
 
 
@@ -75,10 +76,7 @@ class AudioProcessor(Thread):
                 samples = self.get_buffer_as_array(tone_start, settings.INPUT_READ_SIZE * 2)
                 tone = mfsk_decode.audio_to_tone(samples)
                 if self.input_state == InputState.IGNORE_END_TONES:
-                    if tone == settings.SYNC_END_TONE:
-                        print('...another end tone')
-                    else:
-                        print('...not an end tone', tone)
+                    if tone != settings.SYNC_END_TONE:
                         print('...transition to WAITING state')
                         self.input_state = InputState.WAITING
                 else:
@@ -87,18 +85,30 @@ class AudioProcessor(Thread):
                     if tone == settings.SYNC_END_TONE:
                         print('...end tone!')
                         self.input_state = InputState.IGNORE_END_TONES
-                        print('bytes', tone_conversion.tones_to_bytes(self.tones))
+                        self.decode_message()
+                        print('bytes', )
                         self.tones = []
                         break
                     elif tone < 0 or tone > 2**settings.TONE_BITS:
-                        print('illegal tone! set to 0', tone)
-                        tone = 0
+                        print('illegal tone! RESET', tone)
+                        self.input_state = InputState.WAITING
+                        self.tones = []
+                        break
                     self.tones.append(tone)
                 self.next_tone_mid_pos += settings.SAMPLES_PER_TONE
         else:
             raise ValueError(self.input_state)
 
         print('took', (time.time_ns() - start_time) // 1000000, 'ms')
+
+    def decode_message(self):
+        data_bytes = tone_conversion.tones_to_bytes(self.tones)
+        print('received', len(data_bytes), 'bytes', '-', data_bytes)
+        try:
+            message = ReceivedMessage(data_bytes)
+            print('VALID MESSAGE:', message.content.decode())
+        except ChecksumError as ex:
+            print('corrupt message:', ex)
 
 
 class AudioReceiver:
