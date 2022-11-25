@@ -84,7 +84,6 @@ def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
     prev_freq = None
     down_count = 0
     fft_size = settings.SAMPLES_PER_TONE // settings.SYNC_FFT_SPLIT
-    min_down_count = settings.SYNC_FFT_SPLIT - 1
     for i in range(0, len(samples) - fft_size, fft_size):
         f = primary_freq(samples[i:i+fft_size])
         # print('sync', f, down_count)
@@ -93,10 +92,14 @@ def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
             pass
         elif f < prev_freq:
             down_count += 1
+            if down_count > 3:
+                print('sync', f, down_count)
         elif f > prev_freq:
-            if down_count >= min_down_count:
-                return int(i + settings.SAMPLES_PER_TONE * 1.5)
+            if down_count >= settings.SYNC_SWEEP_MIN_DOWN:
+                return int(i - fft_size / 2 + settings.SAMPLES_PER_TONE * 1.5)
             else:
+                if down_count > 3:
+                    print('reset up')
                 down_count = 0
         prev_freq = f
     return None

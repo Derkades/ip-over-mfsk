@@ -14,7 +14,6 @@ import tone_conversion
 class InputState(Enum):
     WAITING = 1
     RECEIVING = 2
-    IGNORE_END_TONES = 3
 
 
 class AudioProcessor(Thread):
@@ -49,7 +48,7 @@ class AudioProcessor(Thread):
         return copy
 
     def process(self):
-        start_time = time.time_ns()
+        # start_time = time.time_ns()
         self.need_process = False
 
         if self.buffer_pos < settings.RECORD_BUFFER_SIZE:
@@ -67,7 +66,7 @@ class AudioProcessor(Thread):
                 self.input_state = InputState.RECEIVING
             else:
                 print('> waiting for sync')
-        elif self.input_state == InputState.RECEIVING or self.input_state == InputState.IGNORE_END_TONES:
+        elif self.input_state == InputState.RECEIVING:
             print('receiving', 'buf_pos', self.buffer_pos, 'tone_pos', self.next_tone_mid_pos)
             # Check if we have received a full tone (half tone length past midpoint)
             # We may have even received multiple tones since the last time process_recording() was called
@@ -75,26 +74,21 @@ class AudioProcessor(Thread):
                 tone_start = self.next_tone_mid_pos - settings.INPUT_READ_SIZE
                 samples = self.get_buffer_as_array(tone_start, settings.INPUT_READ_SIZE * 2)
                 tone = mfsk_decode.audio_to_tone(samples)
-                if self.input_state == InputState.IGNORE_END_TONES:
-                    if tone != settings.SYNC_END_TONE:
-                        print('...transition to WAITING state')
-                        self.input_state = InputState.WAITING
-                else:
-                    # print('> received tone', tone)
-                    print('tones', self.tones)
-                    if tone == settings.SYNC_END_TONE:
-                        print('...end tone!')
-                        self.input_state = InputState.IGNORE_END_TONES
-                        self.decode_message()
-                        print('bytes', )
-                        self.tones = []
-                        break
-                    elif tone < 0 or tone > 2**settings.TONE_BITS:
-                        print('illegal tone! RESET', tone)
-                        self.input_state = InputState.WAITING
-                        self.tones = []
-                        break
-                    self.tones.append(tone)
+                # print('> received tone', tone)
+                # print('tones', self.tones)
+                if tone == settings.SYNC_END_TONE:
+                    print('...end tone!')
+                    self.input_state = InputState.WAITING
+                    self.decode_message()
+                    print('bytes', )
+                    self.tones = []
+                    break
+                elif tone < 0 or tone > 2**settings.TONE_BITS:
+                    print('illegal tone! RESET', tone)
+                    self.input_state = InputState.WAITING
+                    self.tones = []
+                    break
+                self.tones.append(tone)
                 self.next_tone_mid_pos += settings.SAMPLES_PER_TONE
         else:
             raise ValueError(self.input_state)

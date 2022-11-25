@@ -1,5 +1,5 @@
 import sys
-from typing import Iterable
+from typing import Iterable, Union
 import wave
 import struct
 
@@ -52,15 +52,21 @@ def gauss_kernel() -> np.ndarray:
     return kernel_y / np.sum(kernel_y)  # normalize, for consistent amplitude after convolution
 
 
+def tone_frequencies(tones: Union[int, np.ndarray]) -> np.ndarray:
+    return np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE, settings.SAMPLES_PER_TONE)
+
+
 def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
     freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
                       settings.SAMPLES_PER_TONE)
     if settings.SYNC_SWEEP:
-        sync = np.append(np.logspace(np.log2(settings.FREQ_MAX), np.log2(settings.FREQ_MIN), settings.SAMPLES_PER_TONE, base=2),
-                         np.logspace(np.log2(settings.FREQ_MIN), np.log2(settings.FREQ_MAX), settings.SAMPLES_PER_TONE, base=2))
+        sync = np.append(np.logspace(np.log2(settings.SYNC_SWEEP_MAX), np.log2(settings.SYNC_SWEEP_MIN), settings.SAMPLES_PER_TONE, base=2),
+                         np.logspace(np.log2(settings.SYNC_SWEEP_MIN), np.log2(settings.SYNC_SWEEP_MAX), settings.SAMPLES_PER_TONE, base=2))
     else:
-        sync = np.repeat(settings.FREQ_BASE - settings.FREQ_SPACE, settings.SAMPLES_PER_TONE)
-    freqs_smooth = np.convolve(np.append(sync, freqs), gauss_kernel(), mode='same')
+        sync = tone_frequencies(settings.SYNC_START_TONE)
+    end = tone_frequencies(settings.SYNC_END_TONE)
+    freqs_all = np.concatenate((sync, freqs, end))
+    freqs_smooth = np.convolve(freqs_all, gauss_kernel(), mode='same')
     sine = np.sin(np.cumsum(2 * np.pi * freqs_smooth) / settings.SAMPLE_RATE)
     return (sine * settings.OUTPUT_MAX).astype(dtype='i2')
 
@@ -127,8 +133,8 @@ if __name__ == '__main__':
         while True:
             print('play')
             sd.play(samples, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
-            sd.sleep(1000)
             print('done')
+            sd.sleep(2000)
     else:
         print('Error: expecting first argument "play" or "write"')
         sys.exit(1)
