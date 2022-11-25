@@ -1,4 +1,5 @@
 import sys
+from typing import Iterable
 import wave
 import struct
 
@@ -32,7 +33,7 @@ def reduce_click(samples: np.ndarray):
             samples[-i-1] = int(samples[-i-1] * vol_ratio)  # fade-out
 
 
-def tones_to_sine(tones: list[int]) -> np.ndarray:
+def tones_to_sine(tones: Iterable[int]) -> np.ndarray:
     x = np.arange(settings.SAMPLES_PER_TONE)
     data = []
     for tone in tones:
@@ -41,6 +42,22 @@ def tones_to_sine(tones: list[int]) -> np.ndarray:
         reduce_click(wave)
         data.extend(wave)
     return np.array(data, dtype='i2') # signed 16-bit integers
+
+
+def gauss_kernel() -> np.ndarray:
+    # Convolution with cosine kernel, centered with peak at x=0
+    # Not exactly guassian, but close enough?
+    kernel_x = np.linspace(-np.pi, np.pi, settings.GUASSIAN_KERNEL_SIZE)
+    kernel_y = np.cos(kernel_x) + 1  # cosine in range to [0, 2] (adjusted from [-1, 1])
+    return kernel_y / np.sum(kernel_y)  # normalize, for consistent amplitude after convolution
+
+
+def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
+    freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
+                      settings.SAMPLES_PER_TONE)
+    freqs_smooth = np.convolve(freqs, gauss_kernel(), mode='same')
+    sine = np.sin(np.cumsum(2 * np.pi * freqs_smooth) / settings.SAMPLE_RATE)
+    return (sine * settings.OUTPUT_MAX).astype(dtype='i2')
 
 
 def data_to_audio(data: bytes) -> np.ndarray:
@@ -63,7 +80,10 @@ def data_to_audio(data: bytes) -> np.ndarray:
     end_sync = np.repeat(2**settings.TONE_BITS, settings.SYNC_TONES)
     tones = np.concatenate((start_sync, tones, end_sync))
     print('tones:', tones)
-    return tones_to_sine(tones)
+    if settings.GUASSIAN:
+        return tones_to_sine_gauss(tones)
+    else:
+        return tones_to_sine(tones)
 
 
 def write_test_wav(samples: np.ndarray) -> None:
@@ -85,6 +105,8 @@ if __name__ == '__main__':
                               high=settings.PRE_NOISE_LEVEL,
                               size=settings.PRE_NOISE_SAMPLES).astype('i2')
     samples = np.append(noise, data_to_audio(data))
+
+    print(len(samples))
 
     if sys.argv[1] == 'write':
         write_test_wav(samples)
