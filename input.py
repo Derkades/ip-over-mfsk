@@ -56,7 +56,7 @@ class AudioProcessor(Thread):
             print('waiting to fill buffer', self.buffer_pos / settings.RECORD_BUFFER_SIZE)
             return
 
-        print('buffer_pos:', self.buffer_pos, self.buffer_pos % settings.RECORD_BUFFER_SIZE)
+        # print('buffer_pos:', self.buffer_pos, self.buffer_pos % settings.RECORD_BUFFER_SIZE)
 
         if self.input_state == InputState.WAITING:
             samples = self.get_buffer_as_array(self.buffer_pos, settings.RECORD_BUFFER_SIZE)
@@ -99,16 +99,19 @@ class AudioProcessor(Thread):
         else:
             raise ValueError(self.input_state)
 
-        print('took', (time.time_ns() - start_time) // 1000000, 'ms')
+        # print('took', (time.time_ns() - start_time) // 1000000, 'ms')
 
     def decode_message(self):
         data_bytes = tone_conversion.tones_to_bytes(self.tones)
         print('received', len(data_bytes), 'bytes', '-', data_bytes)
-        try:
-            message = ReceivedMessage(data_bytes)
-            print('VALID MESSAGE:', message.content.decode())
-        except ChecksumError as ex:
-            print('corrupt message:', ex)
+        if len(data_bytes) < 3:
+            print('too short')
+        else:
+            try:
+                message = ReceivedMessage(data_bytes)
+                print('VALID MESSAGE:', message.content.decode())
+            except ChecksumError as ex:
+                print('corrupt message:', ex)
 
 
 class AudioReceiver:

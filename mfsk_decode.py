@@ -60,7 +60,8 @@ def audio_to_tone(samples: np.ndarray) -> list[int]:
     s_fft = fft(samples)
     f_loc = np.argmax(s_fft[0])
     f_val = s_fft[1][f_loc]
-    tone = round((f_val - settings.FREQ_BASE) / settings.FREQ_SPACE)
+    # print(f_val, (f_val - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
+    tone = round((f_val - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
     return tone
 
 
@@ -77,12 +78,14 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
 
 def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     group_by = settings.SAMPLES_PER_TONE // 8
-    min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.8 / settings.TONES_PER_SECOND / group_by)
+    min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.7 / settings.TONES_PER_SECOND / group_by)
     start_sample = None
     count = 0
+    not_count = 0
     for i in range(0, len(samples) - group_by, group_by):
         tone = audio_to_tone(samples[i:i+group_by])
-        # print('tone', tone, 'count', count)
+        if settings.DEBUG_SYNC_TONES:
+            print('tone', tone, 'count', count)
 
         if tone == -1:
             count += 1
@@ -93,8 +96,12 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
                 first_tone_midpoint = int(tone_start_sample + settings.SAMPLES_PER_TONE / 2)
                 return first_tone_midpoint
         else:
+            not_count += 1
+
+        if not_count > 1:
             start_sample = None
             count = 0
+            not_count = 0
 
     return None
 
