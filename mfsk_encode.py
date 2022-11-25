@@ -55,7 +55,12 @@ def gauss_kernel() -> np.ndarray:
 def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
     freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
                       settings.SAMPLES_PER_TONE)
-    freqs_smooth = np.convolve(freqs, gauss_kernel(), mode='same')
+    if settings.SYNC_SWEEP:
+        sync = np.append(np.logspace(np.log2(settings.FREQ_MAX), np.log2(settings.FREQ_MIN), settings.SAMPLES_PER_TONE, base=2),
+                         np.logspace(np.log2(settings.FREQ_MIN), np.log2(settings.FREQ_MAX), settings.SAMPLES_PER_TONE, base=2))
+    else:
+        sync = np.repeat(settings.FREQ_BASE - settings.FREQ_SPACE, settings.SAMPLES_PER_TONE)
+    freqs_smooth = np.convolve(np.append(sync, freqs), gauss_kernel(), mode='same')
     sine = np.sin(np.cumsum(2 * np.pi * freqs_smooth) / settings.SAMPLE_RATE)
     return (sine * settings.OUTPUT_MAX).astype(dtype='i2')
 
@@ -76,12 +81,9 @@ def data_to_audio(data: bytes) -> np.ndarray:
     print('checksum:', hex(checksum))
     print('header_bytes', header_bytes)
     tones = tone_conversion.bytes_to_tones(send_data)
-    start_sync = np.repeat(-1, settings.SYNC_TONES)
-    end_sync = np.repeat(2**settings.TONE_BITS, settings.SYNC_TONES)
-    tones = np.concatenate((start_sync, tones, end_sync))
     print('tones:', tones)
     if settings.GUASSIAN:
-        return tones_to_sine_gauss(tones)
+        return tones_to_sine_gauss(np.array(tones))
     else:
         return tones_to_sine(tones)
 
