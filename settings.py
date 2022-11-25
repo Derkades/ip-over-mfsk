@@ -19,6 +19,7 @@ SYNC_TONES = 2
 SYNC_START_TONE = -1
 SYNC_END_TONE = 2**TONE_BITS
 SYNC_SWEEP = True
+SYNC_FFT_SPLIT = 16  # Split each tone into 16 chunks
 
 INPUT_READ_FRACTION = 16  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
 INPUT_READ_SIZE = SAMPLES_PER_TONE // INPUT_READ_FRACTION

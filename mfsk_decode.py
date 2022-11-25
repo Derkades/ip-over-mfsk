@@ -56,12 +56,16 @@ def fft(x):
     return [y_fft, freq_x_axis]
 
 
-def audio_to_tone(samples: np.ndarray) -> list[int]:
+def primary_freq(samples):
     s_fft = fft(samples)
     f_loc = np.argmax(s_fft[0])
-    f_val = s_fft[1][f_loc]
+    return s_fft[1][f_loc]
+
+
+def audio_to_tone(samples: np.ndarray) -> list[int]:
+    f = primary_freq(samples)
     # print(f_val, (f_val - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
-    tone = round((f_val - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
+    tone = round((f - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
     return tone
 
 
@@ -76,8 +80,33 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
     return tones
 
 
+def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
+    prev_freq = None
+    down_count = 0
+    fft_size = settings.SAMPLES_PER_TONE // settings.SYNC_FFT_SPLIT
+    min_down_count = settings.SYNC_FFT_SPLIT - 1
+    for i in range(0, len(samples) - fft_size, fft_size):
+        f = primary_freq(samples[i:i+fft_size])
+        # print('sync', f, down_count)
+
+        if prev_freq is None:
+            pass
+        elif f < prev_freq:
+            down_count += 1
+        elif f > prev_freq:
+            if down_count >= min_down_count:
+                return int(i + settings.SAMPLES_PER_TONE * 1.5)
+            else:
+                down_count = 0
+        prev_freq = f
+    return None
+
+
 def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
-    group_by = settings.SAMPLES_PER_TONE // 8
+    if settings.SYNC_SWEEP:
+        return find_first_tone_midpoint_sweep(samples)
+
+    group_by = settings.SAMPLES_PER_TONE // settings.SYNC_FFT_SPLIT
     min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.7 / settings.TONES_PER_SECOND / group_by)
     start_sample = None
     count = 0
