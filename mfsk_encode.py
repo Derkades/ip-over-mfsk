@@ -71,13 +71,13 @@ def write_test_wav(samples: np.ndarray) -> None:
         wave_writer.setnchannels(1) # mono
         wave_writer.setsampwidth(2) # 16 bits per sample
         wave_writer.setframerate(settings.SAMPLE_RATE)
-        wave_writer.writeframes(signal)
-        print(f'Written {len(signal)} samples to {settings.TEST_WAV}')
+        wave_writer.writeframes(samples)
+        print(f'Written {len(samples)} samples to {settings.TEST_WAV}')
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print('Please provide play/write and message as command line argument')
+        print('Please provide write/plot/play and message as command line argument')
         sys.exit(1)
 
     data = ' '.join(sys.argv[2:]).encode()
@@ -88,6 +88,15 @@ if __name__ == '__main__':
 
     if sys.argv[1] == 'write':
         write_test_wav(samples)
+    elif sys.argv[1] == 'plot':
+        from matplotlib import pyplot as plt
+        samples_x = np.linspace(0, len(samples) / settings.SAMPLE_RATE, num=len(samples))
+        ax1 = plt.subplot(1, 2, 1)
+        ax1.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
+        ax1.set_ylim(top=10000)
+        ax2 = plt.subplot(1, 2, 2, sharex=ax1)
+        ax2.plot(samples_x, samples / settings.OUTPUT_MAX)
+        plt.show()
     elif sys.argv[1] == 'play':
         import sounddevice as sd
 
