@@ -3,32 +3,53 @@ import gray
 
 def bytes_to_tones(data: bytes) -> list[int]:
     tones = []
-    if settings.TONE_BITS == 4:
+
+    if settings.TONE_BITS == 1:
+        for byte in data:
+            tones.append(byte >> 7 & 1)
+            tones.append(byte >> 6 & 1)
+            tones.append(byte >> 5 & 1)
+            tones.append(byte >> 4 & 1)
+            tones.append(byte >> 3 & 1)
+            tones.append(byte >> 2 & 1)
+            tones.append(byte >> 1 & 1)
+            tones.append(byte >> 0 & 1)
+    elif settings.TONE_BITS == 2:
+        for byte in data:
+            tones.append(byte >> 6 & 0b11)
+            tones.append(byte >> 4 & 0b11)
+            tones.append(byte >> 2 & 0b11)
+            tones.append(byte >> 0 & 0b11)
+    elif settings.TONE_BITS == 4:
         for byte in data:
             tones.append(byte >> 4)
             tones.append(byte & 0xF)
     elif settings.TONE_BITS == 8:
         tones = list(data)
     else:
-        raise ValueError
+        raise ValueError()
 
-    for i, tone in enumerate(tones):
-        tones[i] = gray.to_gray(tone)
+    if settings.USE_GRAY_ENCODING:
+        for i, tone in enumerate(tones):
+            tones[i] = gray.to_gray(tone)
 
     return tones
 
 def tones_to_bytes(tones: list[int]):
-    for i, gray_tone in enumerate(tones):
-        tones[i] = gray.from_gray(gray_tone)
+    if settings.USE_GRAY_ENCODING:
+        for i, gray_tone in enumerate(tones):
+            tones[i] = gray.from_gray(gray_tone)
+
+    if settings.TONE_BITS not in {1, 2, 4, 8}:
+        raise ValueError()
 
     byte_list = []
-    if settings.TONE_BITS == 4:
-        for i in range(0, len(tones) // 2 * 2, 2):
-            byte_list.append((tones[i] << 4) ^ tones[i + 1])
-    elif settings.TONE_BITS == 8:
-        byte_list = tones
-    else:
-        raise ValueError
+    tones_per_byte = 8 // settings.TONE_BITS
+    for i in range(0, len(tones) // tones_per_byte * tones_per_byte, tones_per_byte):
+        b = 0
+        for j in range(tones_per_byte):
+            b |= tones[i + j] << (8 - (j+1)*settings.TONE_BITS)
+        byte_list.append(b)
 
     return bytes(byte_list)
 

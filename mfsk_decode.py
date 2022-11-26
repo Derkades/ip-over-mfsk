@@ -1,3 +1,4 @@
+import traceback
 import wave
 import struct
 from dataclasses import dataclass
@@ -83,7 +84,7 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
 def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
     prev_freq = None
     down_count = 0
-    fft_size = settings.SAMPLES_PER_TONE // settings.SYNC_FFT_SPLIT
+    fft_size = settings.SYNC_SWEEP_DURATION // settings.SYNC_FFT_SPLIT
     for i in range(0, len(samples) - fft_size, fft_size):
         f = primary_freq(samples[i:i+fft_size])
         # print('sync', f, down_count)
@@ -96,7 +97,7 @@ def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
                 print('sync', f, down_count)
         elif f > prev_freq:
             if down_count >= settings.SYNC_SWEEP_MIN_DOWN:
-                return int(i - fft_size / 2 + settings.SAMPLES_PER_TONE * 1.5)
+                return int(i - fft_size / 2 + settings.SYNC_SWEEP_DURATION + settings.SAMPLES_PER_TONE / 2)
             else:
                 if down_count > 3:
                     print('reset up')
@@ -157,23 +158,30 @@ if __name__ == '__main__':
 
     print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
 
-    tones = audio_to_tones(samples, first_tone_midpoint)
-
-    print('tones:'.ljust(LJUST), tones)
-
-    # Convert bytes to 4 bit integer list
-    data_bytes = tone_conversion.tones_to_bytes(tones)
-    print('data_bytes:'.ljust(LJUST), data_bytes)
-    print('message size:'.ljust(LJUST), len(data_bytes) - 2)
-
     try:
-        message = ReceivedMessage(data_bytes)
-        print('checksum:'.ljust(LJUST), hex(message.checksum))
-        print('message:'.ljust(LJUST), message.content.decode())
-    except ChecksumError as ex:
-        print('(!)'.ljust(LJUST), ex)
+        tones = audio_to_tones(samples, first_tone_midpoint)
+        print('tones:'.ljust(LJUST), tones)
+        if tones[-1] >= 2**settings.TONE_BITS:
+            tones.pop()
+        else:
+            print('WARNING: no end tone')
+
+        # Convert bytes to 4 bit integer list
+        data_bytes = tone_conversion.tones_to_bytes(tones)
+        print('data_bytes:'.ljust(LJUST), data_bytes)
+        print('message size:'.ljust(LJUST), len(data_bytes) - 2)
+
+        try:
+            message = ReceivedMessage(data_bytes)
+            print('checksum:'.ljust(LJUST), hex(message.checksum))
+            print('message:'.ljust(LJUST), message.content.decode())
+        except ChecksumError as ex:
+            print('integrity error:'.ljust(LJUST), ex)
+    except Exception:
+        traceback.print_exc()
 
     if len(sys.argv) > 1 and sys.argv[1] == 'plot':
         from matplotlib import pyplot as plt
         plt.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
+        plt.gca()
         plt.show()

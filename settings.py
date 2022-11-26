@@ -3,13 +3,13 @@ import numpy as np
 TEST_WAV = 'test.wav'
 
 SAMPLE_RATE = 44_100
-TONES_PER_SECOND = 7  # 1, 2, 3, 4, 5, 6, 7, 10, 14, 15, 18
+TONES_PER_SECOND = 7 # 1, 2, 3, 4, 5, 6, 7, 10, 14, 15, 18
 SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
 assert SAMPLE_RATE // TONES_PER_SECOND == SAMPLE_RATE / TONES_PER_SECOND
 
-TONE_BITS = 4
+TONE_BITS = 8
 FREQ_BASE = 512
-FREQ_SPACE = 192
+FREQ_SPACE = 20
 FREQ_MIN = FREQ_BASE
 FREQ_MAX = FREQ_BASE + FREQ_SPACE * 2**TONE_BITS
 
@@ -18,12 +18,13 @@ DO_COMPRESS = False
 SYNC_START_TONE = -1  # Not used when SYNC_SWEEP is True
 SYNC_END_TONE = 2**TONE_BITS
 SYNC_SWEEP = True
-SYNC_SWEEP_MAX = FREQ_MAX
-SYNC_SWEEP_MIN = FREQ_MIN
-SYNC_FFT_SPLIT = 32
+SYNC_SWEEP_MAX = 8000
+SYNC_SWEEP_MIN = 500
+SYNC_SWEEP_DURATION = SAMPLE_RATE // 4
+SYNC_FFT_SPLIT = 70
 SYNC_SWEEP_MIN_DOWN = SYNC_FFT_SPLIT // 4
 
-INPUT_READ_FRACTION = 4  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
+INPUT_READ_FRACTION = 8  # e.g. 4 means 1/4th of the tone (left and right from the midpoint) is considered (so half in total)
 INPUT_READ_SIZE = SAMPLES_PER_TONE // INPUT_READ_FRACTION
 TONE_CALIBRATION_OFFSET = 0
 
@@ -39,6 +40,8 @@ RECORD_PROCESS_SIZE = RECORD_BUFFER_SIZE // 2
 # Short, quiet noise to wake up audio interface
 PRE_NOISE_SAMPLES = SAMPLE_RATE // 3
 PRE_NOISE_LEVEL = 1e4
+
+USE_GRAY_ENCODING = False
 
 OUTPUT_MAX = np.iinfo(np.int16).max
 
