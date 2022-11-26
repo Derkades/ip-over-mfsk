@@ -59,10 +59,7 @@ def tone_frequencies(tones: Union[int, np.ndarray]) -> np.ndarray:
 def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
     freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
                       settings.SAMPLES_PER_TONE)
-    if settings.SYNC_SWEEP:
-        sync = np.linspace(settings.SYNC_SWEEP_END, settings.SYNC_SWEEP_BEGIN, settings.SYNC_SWEEP_SAMPLES)
-    else:
-        sync = tone_frequencies(settings.SYNC_START_TONE)
+    sync = np.linspace(settings.SYNC_SWEEP_END, settings.SYNC_SWEEP_BEGIN, settings.SYNC_SWEEP_SAMPLES)
     end = tone_frequencies(settings.SYNC_END_TONE)
     freqs_all = np.concatenate((sync, freqs, end))
     freqs_smooth = np.convolve(freqs_all, gauss_kernel(), mode='same')
@@ -113,11 +110,10 @@ if __name__ == '__main__':
                               size=settings.NOISE_SAMPLES).astype('i2')
     samples = np.concatenate((noise, data_to_audio(data), noise))
 
-    print(len(samples))
+    print('sample count', len(samples))
 
-    if settings.SYNC_SWEEP:
-        first_tone_midpoint = (len(noise) + settings.SYNC_SWEEP_SAMPLES + settings.SAMPLES_PER_TONE // 2) / settings.SAMPLE_RATE
-        print(f'first tone midpoint: {first_tone_midpoint:.4f}')
+    first_tone_midpoint = (len(noise) + settings.SYNC_SWEEP_SAMPLES + settings.SAMPLES_PER_TONE // 2) / settings.SAMPLE_RATE
+    print(f'first tone midpoint: {first_tone_midpoint:.4f}')
 
     if sys.argv[1] == 'write':
         write_test_wav(samples)

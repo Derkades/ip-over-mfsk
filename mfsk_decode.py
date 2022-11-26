@@ -83,7 +83,7 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
     return tones
 
 
-def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
+def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     fft_size = settings.SYNC_SWEEP_SAMPLES // settings.SYNC_FFT_SPLIT
     expected_slope = settings.SYNC_SWEEP_SAMPLES / (settings.SYNC_SWEEP_BEGIN - settings.SYNC_SWEEP_END)
     # print('expected_slope', expected_slope)
@@ -112,39 +112,6 @@ def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
                 return int(sweep_end + settings.SAMPLES_PER_TONE / 2 + settings.SYNC_CALIBRATION_OFFSET)
             x_list.pop(0)
             y_list.pop(0)
-
-    return None
-
-
-def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
-    if settings.SYNC_SWEEP:
-        return find_first_tone_midpoint_sweep(samples)
-
-    group_by = settings.SYNC_SWEEP_SAMPLES // settings.SYNC_FFT_SPLIT
-    min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.7 / settings.TONES_PER_SECOND / group_by)
-    start_sample = None
-    count = 0
-    not_count = 0
-    for i in range(0, len(samples) - group_by, group_by):
-        tone = audio_to_tone(samples[i:i+group_by])
-        if settings.DEBUG_SYNC_TONES:
-            print('tone', tone, 'count', count)
-
-        if tone == -1:
-            count += 1
-            if count == 1:
-                start_sample = i
-            elif count > min_count:
-                tone_start_sample = start_sample + settings.SYNC_TONES / settings.TONES_PER_SECOND * settings.SAMPLE_RATE
-                first_tone_midpoint = int(tone_start_sample + settings.SAMPLES_PER_TONE / 2)
-                return first_tone_midpoint
-        else:
-            not_count += 1
-
-        if not_count > 1:
-            start_sample = None
-            count = 0
-            not_count = 0
 
     return None
 
