@@ -66,9 +66,9 @@ def primary_freq(samples):
 
 def audio_to_tone(samples: np.ndarray) -> list[int]:
     f = primary_freq(samples)
-    # print(f_val, (f_val - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
-    tone = round((f - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET)
-    return tone
+    tone = (f - settings.FREQ_BASE) / settings.FREQ_SPACE + settings.TONE_CALIBRATION_OFFSET
+    # print(round(tone), tone, str(f).ljust(10))
+    return round(tone)
 
 
 def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
@@ -84,8 +84,8 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
 
 
 def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
-    fft_size = settings.SYNC_SWEEP_DURATION // settings.SYNC_FFT_SPLIT
-    expected_slope = settings.SYNC_SWEEP_DURATION / (settings.SYNC_SWEEP_BEGIN - settings.SYNC_SWEEP_END)
+    fft_size = settings.SYNC_SWEEP_SAMPLES // settings.SYNC_FFT_SPLIT
+    expected_slope = settings.SYNC_SWEEP_SAMPLES / (settings.SYNC_SWEEP_BEGIN - settings.SYNC_SWEEP_END)
     # print('expected_slope', expected_slope)
     x_list = []
     y_list = []
@@ -109,7 +109,7 @@ def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
                 sweep_end = m * settings.SYNC_SWEEP_BEGIN + c
                 # c_adj = -(expected_slope * settings.SYNC_SWEEP_BEGIN - sweep_end)
                 # sweep_end_adj = expected_slope * settings.SYNC_SWEEP + c_adj
-                return int(sweep_end + settings.SAMPLES_PER_TONE / 2)
+                return int(sweep_end + settings.SAMPLES_PER_TONE / 2 + settings.SYNC_CALIBRATION_OFFSET)
             x_list.pop(0)
             y_list.pop(0)
 
@@ -120,7 +120,7 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     if settings.SYNC_SWEEP:
         return find_first_tone_midpoint_sweep(samples)
 
-    group_by = settings.SYNC_SWEEP_DURATION // settings.SYNC_FFT_SPLIT
+    group_by = settings.SYNC_SWEEP_SAMPLES // settings.SYNC_FFT_SPLIT
     min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.7 / settings.TONES_PER_SECOND / group_by)
     start_sample = None
     count = 0
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         if first_tone_midpoint is None:
             raise ValueError('could not identify start')
 
-        print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
+        print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.4f} seconds')
 
         tones = audio_to_tones(samples, first_tone_midpoint)
         print('tones:'.ljust(LJUST), tones)
