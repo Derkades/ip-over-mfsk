@@ -60,8 +60,7 @@ def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
     freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
                       settings.SAMPLES_PER_TONE)
     if settings.SYNC_SWEEP:
-        sync = np.append(np.linspace(settings.SYNC_SWEEP_MAX, settings.SYNC_SWEEP_MIN, settings.SYNC_SWEEP_DURATION),
-                         np.linspace(settings.SYNC_SWEEP_MIN, settings.SYNC_SWEEP_MAX, settings.SYNC_SWEEP_DURATION))
+        sync = np.linspace(settings.SYNC_SWEEP_END, settings.SYNC_SWEEP_BEGIN, settings.SYNC_SWEEP_DURATION)
     else:
         sync = tone_frequencies(settings.SYNC_START_TONE)
     end = tone_frequencies(settings.SYNC_END_TONE)
@@ -109,10 +108,10 @@ if __name__ == '__main__':
         sys.exit(1)
 
     data = ' '.join(sys.argv[2:]).encode()
-    noise = np.random.uniform(low=-settings.PRE_NOISE_LEVEL,
-                              high=settings.PRE_NOISE_LEVEL,
-                              size=settings.PRE_NOISE_SAMPLES).astype('i2')
-    samples = np.append(noise, data_to_audio(data))
+    noise = np.random.uniform(low=-settings.NOISE_LEVEL,
+                              high=settings.NOISE_LEVEL,
+                              size=settings.NOISE_SAMPLES).astype('i2')
+    samples = np.concatenate((noise, data_to_audio(data), noise))
 
     print(len(samples))
 

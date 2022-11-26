@@ -74,8 +74,7 @@ class AudioProcessor(Thread):
                 tone_start = self.next_tone_mid_pos - settings.INPUT_READ_SIZE
                 samples = self.get_buffer_as_array(tone_start, settings.INPUT_READ_SIZE * 2)
                 tone = mfsk_decode.audio_to_tone(samples)
-                # print('> received tone', tone)
-                # print('tones', self.tones)
+                print('tones', self.tones)
                 if tone == settings.SYNC_END_TONE:
                     print('...end tone!')
                     self.input_state = InputState.WAITING

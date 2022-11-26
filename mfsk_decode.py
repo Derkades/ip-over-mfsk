@@ -1,9 +1,10 @@
+from cmath import isclose
 import traceback
 import wave
 import struct
 from dataclasses import dataclass
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -76,33 +77,42 @@ def audio_to_tones(samples: np.ndarray, start: int) -> list[int]:
         tone_samples = samples[sample-settings.INPUT_READ_SIZE:sample+settings.INPUT_READ_SIZE]
         tone = audio_to_tone(tone_samples)
         if tone == settings.SYNC_END_TONE:
+            print('end tone')
             break
         tones.append(tone)
     return tones
 
 
 def find_first_tone_midpoint_sweep(samples: np.ndarray) -> Optional[int]:
-    prev_freq = None
-    down_count = 0
     fft_size = settings.SYNC_SWEEP_DURATION // settings.SYNC_FFT_SPLIT
+    expected_slope = settings.SYNC_SWEEP_DURATION / (settings.SYNC_SWEEP_BEGIN - settings.SYNC_SWEEP_END)
+    # print('expected_slope', expected_slope)
+    x_list = []
+    y_list = []
     for i in range(0, len(samples) - fft_size, fft_size):
-        f = primary_freq(samples[i:i+fft_size])
-        # print('sync', f, down_count)
+        window = samples[i:i+fft_size]
+        window_center = i + fft_size // 2
+        f = primary_freq(window)
+        x_list.append(f)
+        y_list.append(window_center)
 
-        if prev_freq is None:
-            pass
-        elif f < prev_freq:
-            down_count += 1
-            if down_count > 3:
-                print('sync', f, down_count)
-        elif f > prev_freq:
-            if down_count >= settings.SYNC_SWEEP_MIN_DOWN:
-                return int(i - fft_size / 2 + settings.SYNC_SWEEP_DURATION + settings.SAMPLES_PER_TONE / 2)
-            else:
-                if down_count > 3:
-                    print('reset up')
-                down_count = 0
-        prev_freq = f
+        if len(x_list) >= settings.SYNC_FFT_SPLIT * 0.9:
+            # Fit line y = mx + c through x and y points using least squares
+            # https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html
+            x = np.array(x_list)
+            y = np.array(y_list)
+            A = np.vstack([x, np.ones(len(x))]).T
+            m, c = np.linalg.lstsq(A, y, rcond=None)[0]
+            # print('pos', str(window_center / settings.SAMPLE_RATE).ljust(20), 'slope', m)
+            if np.isclose(m, expected_slope, atol=0.05):
+                # print('found matching slope')
+                sweep_end = m * settings.SYNC_SWEEP_BEGIN + c
+                # c_adj = -(expected_slope * settings.SYNC_SWEEP_BEGIN - sweep_end)
+                # sweep_end_adj = expected_slope * settings.SYNC_SWEEP + c_adj
+                return int(sweep_end + settings.SAMPLES_PER_TONE / 2)
+            x_list.pop(0)
+            y_list.pop(0)
+
     return None
 
 
@@ -110,7 +120,7 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     if settings.SYNC_SWEEP:
         return find_first_tone_midpoint_sweep(samples)
 
-    group_by = settings.SAMPLES_PER_TONE // settings.SYNC_FFT_SPLIT
+    group_by = settings.SYNC_SWEEP_DURATION // settings.SYNC_FFT_SPLIT
     min_count = int(settings.SYNC_TONES * settings.SAMPLE_RATE * 0.7 / settings.TONES_PER_SECOND / group_by)
     start_sample = None
     count = 0
@@ -151,20 +161,16 @@ if __name__ == '__main__':
 
     print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')
 
-    first_tone_midpoint = find_first_tone_midpoint(samples)
-
-    if first_tone_midpoint is None:
-        raise ValueError('could not identify start')
-
-    print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
-
     try:
+        first_tone_midpoint = find_first_tone_midpoint(samples)
+
+        if first_tone_midpoint is None:
+            raise ValueError('could not identify start')
+
+        print('first tone midpoint'.ljust(LJUST), f'{first_tone_midpoint / settings.SAMPLE_RATE:.2f} seconds')
+
         tones = audio_to_tones(samples, first_tone_midpoint)
         print('tones:'.ljust(LJUST), tones)
-        if tones[-1] >= 2**settings.TONE_BITS:
-            tones.pop()
-        else:
-            print('WARNING: no end tone')
 
         # Convert bytes to 4 bit integer list
         data_bytes = tone_conversion.tones_to_bytes(tones)
@@ -182,6 +188,9 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1 and sys.argv[1] == 'plot':
         from matplotlib import pyplot as plt
-        plt.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
-        plt.gca()
+        ax = plt.gca()
+        ax.specgram(samples, Fs=settings.SAMPLE_RATE, scale='dB')
+        if first_tone_midpoint is not None:
+            for i in range(first_tone_midpoint, len(samples) - settings.SAMPLES_PER_TONE, settings.SAMPLES_PER_TONE):
+                ax.axvline(i / settings.SAMPLE_RATE, color='orange', alpha=0.5)
         plt.show()
