@@ -113,7 +113,7 @@ if __name__ == '__main__':
     print('sample count', len(samples))
 
     first_tone_midpoint = (len(noise) + settings.SYNC_SWEEP_SAMPLES + settings.SAMPLES_PER_TONE // 2) / settings.SAMPLE_RATE
-    print(f'first tone midpoint: {first_tone_midpoint:.4f}')
+    print(f'first tone midpoint: {first_tone_midpoint:.4f}', int(first_tone_midpoint * settings.SAMPLE_RATE))
 
     if sys.argv[1] == 'write':
         write_test_wav(samples)

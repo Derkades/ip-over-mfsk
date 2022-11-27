@@ -3,15 +3,15 @@ import numpy as np
 TEST_WAV = 'test.wav'
 
 SAMPLE_RATE = 44_100
-TONES_PER_SECOND = 90 # Run valid_tones.py for list of valid tones. Examples: 1, 4, 15, 36, 49, 84, 105, 147, 180
+TONES_PER_SECOND = 1225 # Run valid_speeds.py for list of valid speeds. Examples: 1, 4, 15, 36, 49, 84, 105, 147, 180
 SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
 assert SAMPLE_RATE // TONES_PER_SECOND == SAMPLE_RATE / TONES_PER_SECOND
 
-TONE_BITS = 4
-FREQ_MIN = 300
-FREQ_MAX = 9000
+TONE_BITS = 1
+FREQ_MIN = 1200
+FREQ_MAX = 2200
 FREQ_BASE = FREQ_MIN
-FREQ_SPACE = (FREQ_MAX - FREQ_MIN) / 2**TONE_BITS
+FREQ_SPACE = (FREQ_MAX - FREQ_MIN) / (2**TONE_BITS - 1)
 
 DO_COMPRESS = False
 
