@@ -1,10 +1,11 @@
 import settings
 import gray
 
+
 def bytes_to_tones(data: bytes) -> list[int]:
     tones = []
 
-    if settings.TONE_BITS == 1:
+    if not settings.MFSK or settings.TONE_BITS == 1:
         for byte in data:
             tones.append(byte >> 7 & 1)
             tones.append(byte >> 6 & 1)
@@ -29,26 +30,32 @@ def bytes_to_tones(data: bytes) -> list[int]:
     else:
         raise ValueError()
 
-    if settings.USE_GRAY_ENCODING:
+    if settings.MFSK and settings.USE_GRAY_ENCODING:
         for i, tone in enumerate(tones):
             tones[i] = gray.to_gray(tone)
 
     return tones
 
-def tones_to_bytes(tones: list[int]):
-    if settings.USE_GRAY_ENCODING:
-        for i, gray_tone in enumerate(tones):
-            tones[i] = gray.from_gray(gray_tone)
 
-    if settings.TONE_BITS not in {1, 2, 4, 8}:
-        raise ValueError()
+def tones_to_bytes(tones: list[int]):
+    if settings.MFSK:
+        if settings.USE_GRAY_ENCODING:
+            for i, gray_tone in enumerate(tones):
+                tones[i] = gray.from_gray(gray_tone)
+
+        if settings.TONE_BITS not in {1, 2, 4, 8}:
+            raise ValueError()
+
+        tone_bits = settings.TONE_BITS
+    else:
+        tone_bits = 1
 
     byte_list = []
-    tones_per_byte = 8 // settings.TONE_BITS
+    tones_per_byte = 8 // tone_bits
     for i in range(0, len(tones) // tones_per_byte * tones_per_byte, tones_per_byte):
         b = 0
         for j in range(tones_per_byte):
-            b |= tones[i + j] << (8 - (j+1)*settings.TONE_BITS)
+            b |= tones[i + j] << (8 - (j+1)*tone_bits)
         byte_list.append(b)
 
     return bytes(byte_list)

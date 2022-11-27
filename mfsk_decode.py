@@ -124,6 +124,10 @@ def read_test_wav() -> np.ndarray:
 
 
 if __name__ == '__main__':
+    if not settings.MFSK:
+        print('this script can only decode MFSK')
+        sys.exit(1)
+
     samples = read_test_wav()
 
     print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')

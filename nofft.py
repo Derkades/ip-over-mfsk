@@ -66,7 +66,7 @@ if __name__ == '__main__':
         is_sample = pll(bits_signal[i])
         clock[i] = is_sample
         if is_sample:
-            bits.append(1 - int(bits_signal[i]))
+            bits.append(int(bits_signal[i]))
 
     # plt.plot(clock)
 
