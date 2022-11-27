@@ -5,6 +5,8 @@ from scipy.signal import firwin, lfiltic, lfilter
 
 import settings
 import mfsk_decode
+import tone_conversion
+from DigitalPLL import DigitalPLL
 
 
 class fir_filter(object):
@@ -18,10 +20,10 @@ class fir_filter(object):
 
 
 if __name__ == '__main__':
-    audio_data = mfsk_decode.read_test_wav()[36768:38768]
+    audio_data = mfsk_decode.read_test_wav()
     sample_rate = settings.SAMPLE_RATE
 
-    plt.plot(audio_data / 32768)
+    # plt.plot(audio_data / 32768)
 
     # DIGITIZE
 
@@ -52,11 +54,26 @@ if __name__ == '__main__':
     # plt.plot(filtered)
 
     # DIGITIZE AGAIN
-    bits = filtered > 0
+    bits_signal = filtered > 0
 
-    plt.plot(bits)
+    # plt.plot(bits_signal)
 
-    plt.show()
+    pll = DigitalPLL(sample_rate, settings.TONES_PER_SECOND)
+    clock = np.zeros(len(bits_signal), dtype=int)
+
+    bits = []
+    for i in range(len(bits_signal)):
+        is_sample = pll(bits_signal[i])
+        clock[i] = is_sample
+        if is_sample:
+            bits.append(1 - int(bits_signal[i]))
+
+    # plt.plot(clock)
+
+    for i in range(8):
+        print(tone_conversion.tones_to_bytes(bits[i:]))
+
+    # plt.show()
 
 
 # some parts copied from https://github.com/mobilinkd/afsk-demodulator/

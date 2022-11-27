@@ -2,8 +2,8 @@ import numpy as np
 
 TEST_WAV = 'test.wav'
 
-SAMPLE_RATE = 44_100
-TONES_PER_SECOND = 1225 # Run valid_speeds.py for list of valid speeds. Examples: 1, 4, 15, 36, 49, 84, 105, 147, 180
+SAMPLE_RATE = 48_000
+TONES_PER_SECOND = 1200 # Run valid_speeds.py for list of valid speeds.
 SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
 assert SAMPLE_RATE // TONES_PER_SECOND == SAMPLE_RATE / TONES_PER_SECOND
 

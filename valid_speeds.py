@@ -1,3 +1,6 @@
-for i in range(1, 1500):
-    if 44100 / i == 44100 // i:
-        print(i)
+import settings
+
+if __name__ == '__main__':
+    for i in range(1, 1500):
+        if settings.SAMPLE_RATE / i == settings.SAMPLE_RATE // i:
+            print(i)
