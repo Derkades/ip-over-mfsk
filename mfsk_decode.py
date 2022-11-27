@@ -12,6 +12,7 @@ import crc16
 import settings
 import smallgzip
 import tone_conversion
+import test_wav
 
 
 LJUST = 20
@@ -116,19 +117,12 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
     return None
 
 
-def read_test_wav() -> np.ndarray:
-    with wave.open(settings.TEST_WAV, 'rb') as wave_reader:
-        max_frames = 16*1024*1024 # max 32 MiB memory usage
-        frame_bytes = wave_reader.readframes(max_frames)
-        return np.frombuffer(frame_bytes, dtype='i2')
-
-
 if __name__ == '__main__':
     if not settings.MFSK:
         print('this script can only decode MFSK')
         sys.exit(1)
 
-    samples = read_test_wav()
+    samples = test_wav.read()
 
     print('audio duration'.ljust(LJUST), f'{len(samples) / settings.SAMPLE_RATE:.1f} seconds')
 

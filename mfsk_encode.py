@@ -98,15 +98,6 @@ def data_to_audio(data: bytes) -> np.ndarray:
         return tones_to_sine(tones)
 
 
-def write_test_wav(samples: np.ndarray) -> None:
-    with wave.open(settings.TEST_WAV, 'wb') as wave_writer:
-        wave_writer.setnchannels(1) # mono
-        wave_writer.setsampwidth(2) # 16 bits per sample
-        wave_writer.setframerate(settings.SAMPLE_RATE)
-        wave_writer.writeframes(samples)
-        print(f'Written {len(samples)} samples to {settings.TEST_WAV}')
-
-
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print('Please provide write/plot/play and message as command line argument')
@@ -127,7 +118,8 @@ if __name__ == '__main__':
     print(f'first tone midpoint: ', first_tone_midpoint, f'{first_tone_midpoint/settings.SAMPLE_RATE:.4f}')
 
     if sys.argv[1] == 'write':
-        write_test_wav(samples)
+        import test_wav
+        test_wav.write(samples)
     elif sys.argv[1] == 'plot':
         from matplotlib import pyplot as plt
         samples_x = np.linspace(0, len(samples) / settings.SAMPLE_RATE, num=len(samples))

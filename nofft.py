@@ -4,7 +4,7 @@ import scipy.signal
 from scipy.signal import firwin, lfiltic, lfilter
 
 import settings
-import mfsk_decode
+import test_wav
 import tone_conversion
 from DigitalPLL import DigitalPLL
 
@@ -20,7 +20,7 @@ class fir_filter(object):
 
 
 if __name__ == '__main__':
-    audio_data = mfsk_decode.read_test_wav()
+    audio_data = test_wav.read()
     sample_rate = settings.SAMPLE_RATE
 
     # plt.plot(audio_data / 32768)
@@ -34,7 +34,9 @@ if __name__ == '__main__':
     # DIGITALLY CORRELATE
 
     # 446 microsec is goed voor 1200/2200hz volgens https://github.com/mobilinkd/afsk-demodulator/blob/master/afsk-demodulator.ipynb
-    delay = int(0.000446 * settings.SAMPLE_RATE)
+    # en volgens het internet: "a linear phase (i.e. symmetric or anti-symmetric) filter, the group delay is half the length"
+    # delay = int(0.000446 * settings.SAMPLE_RATE)
+    delay = settings.SAMPLES_PER_TONE // 2
     delayed = digitized[delay:]
     xored = np.logical_xor(digitized[:0-delay], delayed)
     # plt.plot(xored)
