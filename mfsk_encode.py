@@ -81,11 +81,15 @@ def data_to_audio(data: bytes) -> np.ndarray:
         print('original message:', data)
         data = smallgzip.compress(data)
 
-    # TODO no need to send CRC16 when compression is enabled, saves 2 bytes
-
     checksum = crc16.crc16(data)
     header_bytes = struct.pack('>H', checksum)
     send_data = header_bytes + data
+
+    # MFSK uses sync sweep to find start, but non-M FSK has no such thing.
+    # Prepend start marker to bitstream
+    if not settings.MFSK:
+        send_data = settings.START_MARKER + send_data
+
     print('size:', len(data))
     print('message:', data)
     print('checksum:', hex(checksum))
@@ -134,7 +138,7 @@ if __name__ == '__main__':
 
         while True:
             print('play')
-            sd.play(samples, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
+            sd.play(samples // 2, latency='high', samplerate=settings.SAMPLE_RATE, blocking=True)
             print('done')
             sd.sleep(2000)
     else:

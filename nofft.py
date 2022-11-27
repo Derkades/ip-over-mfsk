@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from matplotlib import pyplot as plt
 import scipy.signal
@@ -9,6 +10,9 @@ import tone_conversion
 from DigitalPLL import DigitalPLL
 
 
+START_MARKER_BITS = tone_conversion.bytes_to_tones(settings.START_MARKER)
+
+
 class fir_filter(object):
     def __init__(self, coeffs):
         self.coeffs = coeffs
@@ -17,6 +21,18 @@ class fir_filter(object):
     def __call__(self, data):
         result, self.zl = lfilter(self.coeffs, 32768.0, data, -1, self.zl)
         return result
+
+
+def find_start(bits: np.ndarray) -> Optional[int]:
+    marker_pos = 0
+    for i, bit in enumerate(bits):
+        if bit == START_MARKER_BITS[marker_pos]:
+            marker_pos += 1
+            if marker_pos == len(START_MARKER_BITS):
+                return i + 1
+        else:
+            marker_pos = 0
+    return None
 
 
 if __name__ == '__main__':
@@ -72,8 +88,12 @@ if __name__ == '__main__':
 
     # plt.plot(clock)
 
-    for i in range(8):
-        print(tone_conversion.tones_to_bytes(bits[i:]))
+    start = find_start(bits)
+    print(start)
+    print(tone_conversion.tones_to_bytes(bits[start:]))
+
+    # for i in range(8):
+    #     print(tone_conversion.tones_to_bytes(bits[i:]))
 
     # plt.show()
 

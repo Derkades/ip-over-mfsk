@@ -28,9 +28,10 @@ if MFSK:
 
     USE_GRAY_ENCODING = False
 else:
-    TONES_PER_SECOND = 480  # Run valid_speeds.py for list of valid speeds.
+    TONES_PER_SECOND = 1920  # Run valid_speeds.py for list of valid speeds.
     FREQ_MARK = TONES_PER_SECOND
     FREQ_SPACE = TONES_PER_SECOND*2
+    START_MARKER = b'RAPHBIN'
 
 SAMPLES_PER_TONE = SAMPLE_RATE // TONES_PER_SECOND
 assert SAMPLE_RATE // TONES_PER_SECOND == SAMPLE_RATE / TONES_PER_SECOND
