@@ -11,12 +11,12 @@ else:
     print('mode:'.ljust(ljust), 'single bit, comb filter')
     rate = settings.TONES_PER_SECOND
     print('data rate:'.ljust(ljust), str(rate), 'bits/s', str(rate//8), 'bytes/s')
-    overhead = (settings.NOISE_SAMPLES*2) / settings.SAMPLE_RATE
+    overhead = (settings.NOISE_SAMPLES*2 + len(settings.START_MARKER)*8*settings.SAMPLES_PER_TONE) / settings.SAMPLE_RATE
 
 print('samples per tone:'.ljust(ljust), settings.SAMPLES_PER_TONE)
-print('transmission overhead:'.ljust(ljust), overhead, 'seconds')
-print('tweet:'.ljust(ljust), f'{140*8/rate + overhead:.1f} seconds')
-print('this code:'.ljust(ljust), f'{10*1024*8/rate + overhead:.1f} seconds')
+print('transmission overhead:'.ljust(ljust), f'{overhead:.1f} seconds')
+print('text message (raw):'.ljust(ljust), f'{150*8/rate + overhead:.1f} seconds')
+print('text message (HTTP):'.ljust(ljust), f'{2048*8/rate + overhead:.1f} seconds')
 print('small pdf:'.ljust(ljust), int(128*1024*8/rate/60 + overhead), 'minutes')
 print('low quality song:'.ljust(ljust), int(1.5*1024*1024*8/rate/60 + overhead), 'minutes')
 print('record buffer size:'.ljust(ljust), settings.RECORD_BUFFER_SIZE, 'samples')
