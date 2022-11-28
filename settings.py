@@ -11,7 +11,7 @@ SAMPLE_RATE = 48_000
 # Fourier transform to decode incoming data. Set to False to use FSK, which
 # transfers a single bit per tone and uses filters (band pass, comb, low pass)
 # to decode incoming data.
-MFSK = True
+MFSK = False
 
 if MFSK:
     # Number of tones per second, must be an integer divisor of sample rate.
@@ -66,6 +66,15 @@ if MFSK:
     # Gray-encode bytes before sending, and gray-decode after receiving. Seems
     # to make no difference in transmission reliability.
     USE_GRAY_ENCODING = False
+
+    # Size of buffer when recording (number of samples). Should be large enough
+    # to fit the entire sync sweep tone, but it does not have to be large
+    # enough to fit an entire transmission.
+    RECORD_BUFFER_SIZE = 128*1024
+    # How often to process the buffer. Should always be smaller than
+    # RECORD_BUFFER_SIZE, or data is missed. Processing is resource-intensive and
+    # should not be done more frequently than necessary.
+    RECORD_PROCESS_SIZE = RECORD_BUFFER_SIZE // 2
 else:
     # Number of tones per second, must be an integer divisor of sample rate.
     # Run valid_speeds.py for list of valid speeds.
@@ -101,15 +110,6 @@ else:
     # e.g. 16 means 1/16th of a tone used for fade-in and fade-out
     ANTICLICK_FADE_AMOUNT = 8
 
-# Size of buffer when recording (number of samples). Should be large enough
-# to fit the entire sync sweep tone, but it does not have to be large
-# enough to fit an entire transmission.
-RECORD_BUFFER_SIZE = 128*1024
-# How often to process the buffer. Should always be smaller than
-# RECORD_BUFFER_SIZE, or data is missed. Processing is resource-intensive and
-# should not be done more frequently than necessary.
-RECORD_PROCESS_SIZE = RECORD_BUFFER_SIZE // 2
-
 # Compress data using optimized gzip before sending. Data is transparently
 # decompressed after receiving. Useful for testing transmission stability,
 # since compressed bits are more "random" and more likely to include very
@@ -123,3 +123,8 @@ NOISE_LEVEL = 1e4
 
 # Maximum value of a signed short (2 bytes)
 OUTPUT_MAX = np.iinfo(np.int16).max
+
+# Packet header size, in bytes. Do not change.
+PACKET_HEADER_SIZE = 4
+# Maximum size of packet, in bytes
+MAX_PACKET_SIZE = 1500

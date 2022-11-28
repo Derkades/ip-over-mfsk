@@ -30,15 +30,17 @@ class ReceivedMessage:
     content: bytes
 
     def __init__(self, data_bytes):
-        # Extract checksum (first 4 bytes)
-        self.size, self.checksum, = struct.unpack('>HH', data_bytes[:4])
+        # Extract header
+        self.size, self.checksum, = struct.unpack('>HH', data_bytes[:settings.PACKET_HEADER_SIZE])
 
         # Message after header
-        self.content = data_bytes[4:]
+        self.content = data_bytes[settings.PACKET_HEADER_SIZE:]
         message_checksum = crc16.crc16(self.content)
 
-        if self.size != len(data_bytes) - 4:
+        if self.size != len(data_bytes) - settings.PACKET_HEADER_SIZE:
             raise ValueError('packet contains size ' + str(self.size) + ' but it is actually ' + str(len(data_bytes) - 4))
+
+        assert self.size <= settings.MAX_PACKET_SIZE
 
         if self.checksum != message_checksum:
             raise ChecksumError(self.checksum, message_checksum)

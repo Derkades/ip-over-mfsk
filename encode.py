@@ -81,6 +81,9 @@ def data_to_audio(data: bytes) -> np.ndarray:
         print('original message:', data)
         data = smallgzip.compress(data)
 
+    if len(data) > settings.MAX_PACKET_SIZE:
+        raise ValueError('message too long')
+
     checksum = crc16.crc16(data)
     header_bytes = struct.pack('>HH', len(data), checksum)
     send_data = header_bytes + data
