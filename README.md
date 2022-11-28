@@ -1,3 +1,8 @@
+## Usage
+
+1. MFSK - Transfer multiple bits in a single tone using multiple frequencies (4, 16 or 256 frequencies for 2, 4 or 8 bits respectively). Uses Fourier transform to find frequency for audio signal in small windows. Write or play audio for a message using `encode.py`. Decode from file using `decode_mfsk.py`. Decode from live audio input using `decode_mfsk_realtime.py`. Set `MFSK = True` in `settings.py`.
+2. FSK - Transfer data using only two frequencies (single bit), but at much higher rate. Write or play audio for a message using `encode.py`. Decode from file using `decode_fsk.py`. Decoding from live audio is not possible, yet. Set `MFSK = False` in `settings.py`.
+
 ## Creating network interface
 
 ```
