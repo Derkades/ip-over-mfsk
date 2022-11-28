@@ -1,26 +1,15 @@
 from typing import Optional
 import numpy as np
 from matplotlib import pyplot as plt
-import scipy.signal
 from scipy.signal import firwin, lfiltic, lfilter
 
 import settings
 import test_wav
 import tone_conversion
-from DigitalPLL import DigitalPLL
+from digital_pll import DigitalPLL
 
 
 START_MARKER_BITS = tone_conversion.bytes_to_tones(settings.START_MARKER)
-
-
-class fir_filter(object):
-    def __init__(self, coeffs):
-        self.coeffs = coeffs
-        self.zl = lfiltic(self.coeffs, 32768.0, [], [])
-
-    def __call__(self, data):
-        result, self.zl = lfilter(self.coeffs, 32768.0, data, -1, self.zl)
-        return result
 
 
 def find_start(bits: np.ndarray) -> Optional[int]:
@@ -35,48 +24,46 @@ def find_start(bits: np.ndarray) -> Optional[int]:
     return None
 
 
-if __name__ == '__main__':
-    audio_data = test_wav.read()
-    sample_rate = settings.SAMPLE_RATE
-
-    # plt.plot(audio_data / 32768)
-
-    # DIGITIZE
-
-    # digitized = np.array([int(x > 0) for x in audio_data])
-    digitized = audio_data > 0
-    # plt.plot(digitized)
-
-    # DIGITALLY CORRELATE
-
-    # 446 microsec is goed voor 1200/2200hz volgens https://github.com/mobilinkd/afsk-demodulator/blob/master/afsk-demodulator.ipynb
-    # en volgens het internet: "a linear phase (i.e. symmetric or anti-symmetric) filter, the group delay is half the length"
-    # delay = int(0.000446 * settings.SAMPLE_RATE)
-    delay = settings.SAMPLES_PER_TONE // 2
-    delayed = digitized[delay:]
-    xored = np.logical_xor(digitized[:0-delay], delayed)
-    # plt.plot(xored)
-
-    # LOW PASS FILTER
-
-    lpf_coeffs = np.array(firwin(101, [760.0/(sample_rate/2)],
+def low_pass(samples: np.ndarray) -> np.ndarray:
+    lpf_coeffs = np.array(firwin(101, [760.0/(settings.SAMPLE_RATE/2)],
                                  width=None,
                                  pass_zero=True,
                                  scale=True,
-                                 window='hann') * 32768,
-                          dtype=int)
+                                 window='hann') * settings.OUTPUT_MAX,
+                          dtype='i2')
+    zl = lfiltic(lpf_coeffs, settings.OUTPUT_MAX, [], [])
+    result1, zl = lfilter(lpf_coeffs, settings.OUTPUT_MAX, samples, -1, zl)
+    result2, zl = lfilter(lpf_coeffs, settings.OUTPUT_MAX, np.zeros(len(lpf_coeffs)), -1, zl)
+    return np.append(result1, result2[len(lpf_coeffs)//2:])
 
-    lpf = fir_filter(lpf_coeffs)
+
+if __name__ == '__main__':
+    audio_data = test_wav.read()
+
+    # plt.plot(audio_data / 32768)
+
+    # Array of booleans, true where audio sample was positive
+    audio_is_positive = audio_data > 0
+    # plt.plot(audio_is_positive)
+
+    # Delay for comb filter should be half the sample rate
+    delay = settings.SAMPLES_PER_TONE // 2
+
+    xored = np.logical_xor(audio_is_positive[:-delay],
+                           audio_is_positive[delay:])
+    plt.plot(xored)
+
+    # Low pass filter
     normalized = (xored - 0.5) * 2.0
-    filtered = np.append(lpf(normalized), lpf(np.zeros(len(lpf_coeffs))))[len(lpf_coeffs)//2:]
-    # plt.plot(filtered)
+    filtered = low_pass(normalized)
+    plt.plot(filtered)
 
-    # DIGITIZE AGAIN
+    # Convert to booleans again
     bits_signal = filtered > 0
 
     # plt.plot(bits_signal)
 
-    pll = DigitalPLL(sample_rate, settings.TONES_PER_SECOND)
+    pll = DigitalPLL(settings.SAMPLE_RATE, settings.TONES_PER_SECOND)
     clock = np.zeros(len(bits_signal), dtype=int)
 
     bits = []
@@ -89,13 +76,11 @@ if __name__ == '__main__':
     # plt.plot(clock)
 
     start = find_start(bits)
-    print(start)
+    assert start is not None
+
     print(tone_conversion.tones_to_bytes(bits[start:]))
 
-    # for i in range(8):
-    #     print(tone_conversion.tones_to_bytes(bits[i:]))
-
-    # plt.show()
+    plt.show()
 
 
 # some parts copied from https://github.com/mobilinkd/afsk-demodulator/
