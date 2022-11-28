@@ -25,16 +25,20 @@ class ChecksumError(Exception):
 
 @dataclass
 class ReceivedMessage:
+    size: int
     checksum: int
     content: bytes
 
     def __init__(self, data_bytes):
-        # Extract checksum (first 2 bytes)
-        self.checksum, = struct.unpack('>H', data_bytes[:2])
+        # Extract checksum (first 4 bytes)
+        self.size, self.checksum, = struct.unpack('>HH', data_bytes[:4])
 
         # Message after header
-        self.content = data_bytes[2:]
+        self.content = data_bytes[4:]
         message_checksum = crc16.crc16(self.content)
+
+        if self.size != len(data_bytes) - 4:
+            raise ValueError('packet contains size ' + str(self.size) + ' but it is actually ' + str(len(data_bytes) - 4))
 
         if self.checksum != message_checksum:
             raise ChecksumError(self.checksum, message_checksum)
@@ -113,7 +117,6 @@ def find_first_tone_midpoint(samples: np.ndarray) -> Optional[int]:
                 return int(sweep_end + settings.SAMPLES_PER_TONE / 2 + settings.SYNC_CALIBRATION_OFFSET)
             x_list.pop(0)
             y_list.pop(0)
-
     return None
 
 
@@ -140,12 +143,12 @@ if __name__ == '__main__':
         # Convert bytes to 4 bit integer list
         data_bytes = tone_conversion.tones_to_bytes(tones)
         print('data_bytes:'.ljust(LJUST), data_bytes)
-        print('message size:'.ljust(LJUST), len(data_bytes) - 2)
 
         try:
             message = ReceivedMessage(data_bytes)
             print('checksum:'.ljust(LJUST), hex(message.checksum))
             print('message:'.ljust(LJUST), message.content.decode())
+            print('size:'.ljust(LJUST), message.size)
         except ChecksumError as ex:
             print('integrity error:'.ljust(LJUST), ex)
     except Exception:

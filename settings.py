@@ -11,7 +11,7 @@ SAMPLE_RATE = 48_000
 # Fourier transform to decode incoming data. Set to False to use FSK, which
 # transfers a single bit per tone and uses filters (band pass, comb, low pass)
 # to decode incoming data.
-MFSK = False
+MFSK = True
 
 if MFSK:
     # Number of tones per second, must be an integer divisor of sample rate.

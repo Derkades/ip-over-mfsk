@@ -63,7 +63,7 @@ def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
         sync = np.linspace(settings.SYNC_SWEEP_END, settings.SYNC_SWEEP_BEGIN,
                            settings.SYNC_SWEEP_SAMPLES)
         end = tone_frequencies(settings.SYNC_END_TONE)
-        freqs = np.concatenate(sync, freqs, end)
+        freqs = np.concatenate((sync, freqs, end))
     else:
         freqs = np.zeros_like(tones, dtype='i2')
         freqs[tones == 1] = settings.FREQ_MARK
@@ -82,7 +82,7 @@ def data_to_audio(data: bytes) -> np.ndarray:
         data = smallgzip.compress(data)
 
     checksum = crc16.crc16(data)
-    header_bytes = struct.pack('>H', checksum)
+    header_bytes = struct.pack('>HH', len(data), checksum)
     send_data = header_bytes + data
 
     # MFSK uses sync sweep to find start, but non-M FSK has no such thing.
