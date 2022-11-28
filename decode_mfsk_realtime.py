@@ -6,8 +6,8 @@ import sounddevice as sd
 import numpy as np
 
 import settings
-import mfsk_decode
-from mfsk_decode import ReceivedMessage, ChecksumError
+import decode_mfsk
+from decode_mfsk import ReceivedMessage, ChecksumError
 import tone_conversion
 
 
@@ -59,7 +59,7 @@ class AudioProcessor(Thread):
 
         if self.input_state == InputState.WAITING:
             samples = self.get_buffer_as_array(self.buffer_pos, settings.RECORD_BUFFER_SIZE)
-            first_midpoint = mfsk_decode.find_first_tone_midpoint(samples)
+            first_midpoint = decode_mfsk.find_first_tone_midpoint(samples)
             if first_midpoint is not None:
                 self.next_tone_mid_pos = self.buffer_pos - settings.RECORD_BUFFER_SIZE + first_midpoint
                 print('> found first midpoint at', '0-indexed', first_midpoint, 'midpoint pos in buffer', self.next_tone_mid_pos)
@@ -73,7 +73,7 @@ class AudioProcessor(Thread):
             while self.buffer_pos > self.next_tone_mid_pos + settings.INPUT_READ_SIZE:
                 tone_start = self.next_tone_mid_pos - settings.INPUT_READ_SIZE
                 samples = self.get_buffer_as_array(tone_start, settings.INPUT_READ_SIZE * 2)
-                tone = mfsk_decode.audio_to_tone(samples)
+                tone = decode_mfsk.audio_to_tone(samples)
                 print('tones', self.tones)
                 if tone == settings.SYNC_END_TONE:
                     print('...end tone!')

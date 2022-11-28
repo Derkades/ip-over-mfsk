@@ -5,7 +5,7 @@ import numpy as np
 
 import sounddevice as sd
 
-import mfsk_encode
+import encode
 import tun
 import settings
 
@@ -31,6 +31,6 @@ if __name__ == '__main__':
 
         start_time = time.time()
         network_data = os.read(tun_fd, 4096)
-        samples = mfsk_encode.data_to_audio(network_data)
+        samples = encode.data_to_audio(network_data)
         sd.play(samples, blocking=True)
         print(f'transmitted {len(network_data)} bytes in {time.time()-start_time:.1f} seconds')
