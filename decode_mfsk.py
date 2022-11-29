@@ -1,52 +1,17 @@
-from cmath import isclose
 import traceback
-import wave
-import struct
-from dataclasses import dataclass
 import sys
 from typing import Optional, Tuple
 
 import numpy as np
 
-import crc16
+import packet
+from packet import BasePacketDecodeError
 import settings
-import smallgzip
 import tone_conversion
 import test_wav
 
 
 LJUST = 20
-
-
-class ChecksumError(Exception):
-    def __init__(self, checksum_header: int, checksum_message: int):
-        super().__init__(f'Expected checksum {checksum_header} but message has checksum {checksum_message}')
-
-
-@dataclass
-class ReceivedMessage:
-    size: int
-    checksum: int
-    content: bytes
-
-    def __init__(self, data_bytes):
-        # Extract header
-        self.size, self.checksum, = struct.unpack('>HH', data_bytes[:settings.PACKET_HEADER_SIZE])
-
-        # Message after header
-        self.content = data_bytes[settings.PACKET_HEADER_SIZE:]
-        message_checksum = crc16.crc16(self.content)
-
-        if self.size != len(data_bytes) - settings.PACKET_HEADER_SIZE:
-            raise ValueError('packet contains size ' + str(self.size) + ' but it is actually ' + str(len(data_bytes) - 4))
-
-        assert self.size <= settings.MAX_PACKET_SIZE
-
-        if self.checksum != message_checksum:
-            raise ChecksumError(self.checksum, message_checksum)
-
-        if settings.DO_COMPRESS:
-            self.content = smallgzip.decompress(self.content)
 
 
 def generate_frequencies():
@@ -147,12 +112,11 @@ if __name__ == '__main__':
         print('data_bytes:'.ljust(LJUST), data_bytes)
 
         try:
-            message = ReceivedMessage(data_bytes)
-            print('checksum:'.ljust(LJUST), hex(message.checksum))
-            print('message:'.ljust(LJUST), message.content.decode())
-            print('size:'.ljust(LJUST), message.size)
-        except ChecksumError as ex:
-            print('integrity error:'.ljust(LJUST), ex)
+            message = packet.unpack(data_bytes)
+            print('message:'.ljust(LJUST), message)
+            print('size:'.ljust(LJUST), len(message))
+        except BasePacketDecodeError as ex:
+            print('decode error:'.ljust(LJUST), ex)
     except Exception:
         traceback.print_exc()
 

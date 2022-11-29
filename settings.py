@@ -23,15 +23,9 @@ if MFSK:
     TONE_BITS = 4
     # Minimum frequency and maximum frequency to use for data transfer.
     # A greater frequency range will produce better results, especially when
-    # using a high number of tone bits. Used to calculate FREQ_BASE
-    # and FREQ_SPACE
+    # using a high number of tone bits.
     FREQ_MIN = 500
     FREQ_MAX = 6000
-
-    # Base frequency and space between frequencies for each bit combination.
-    # Calculated from settings above
-    FREQ_BASE = FREQ_MIN
-    FREQ_SPACE = (FREQ_MAX - FREQ_MIN) / (2**TONE_BITS - 1)
 
     # A sync signal is used to measure the start time of the first sample in
     # an incoming signal. A sweep is used, from one frequency
@@ -57,8 +51,6 @@ if MFSK:
     # value avoids edge artifacts. A too small value means there are not
     # enough samples to measure frequency accurately.
     INPUT_READ_FRACTION = 8
-    # Input read size, in samples
-    INPUT_READ_SIZE = SAMPLE_RATE // TONES_PER_SECOND // INPUT_READ_FRACTION
     # Tone offset, for example enter a small negative number if the
     # interpreted tones are all slightly too high.
     TONE_CALIBRATION_OFFSET = 0
@@ -80,16 +72,16 @@ else:
     # Run valid_speeds.py for list of valid speeds.
     # Equal to resulting baud rate
     TONES_PER_SECOND = 1920
-    # Frequency used for mark (1-bit). Should generally be set to match the
-    # baud rate, or double
-    FREQ_MARK = TONES_PER_SECOND
-    # Frequency used for space (0-bit). Should generally be set to match the
-    # baud rate, or double (opposite of mark frequency)
-    FREQ_SPACE = TONES_PER_SECOND*2
+
     # Start marker to identify start of incoming transmission. Should be long
     # enough for the start marker to not occur in the message coincidentally,
     # but short enough to not introduce unnecessary overhead.
     START_MARKER = b'RAPHBIN'
+
+    # Number of seconds to wait between processing buffer (float)
+    REALTIME_PROCESS_WAIT = 1
+    # Buffer size, must fit entire transmission
+    RECORD_BUFFER_SIZE = 10*1024*1024
 
 # Samples per tone, calculated from sample rate and tones per
 # second. Verified to integer divisible.
@@ -121,10 +113,29 @@ DO_COMPRESS = False
 NOISE_SAMPLES = SAMPLE_RATE // 3
 NOISE_LEVEL = 1e4
 
+# Maximum size of packet, in bytes
+MAX_PACKET_SIZE = 1500
+
+# --------------------- Do not change --------------------- #
+# Constants and values derived from other settings
+
 # Maximum value of a signed short (2 bytes)
 OUTPUT_MAX = np.iinfo(np.int16).max
 
-# Packet header size, in bytes. Do not change.
+# Packet header size, in bytes
 PACKET_HEADER_SIZE = 4
-# Maximum size of packet, in bytes
-MAX_PACKET_SIZE = 1500
+
+if MFSK:
+    # Base frequency and space between frequencies for each bit combination.
+    FREQ_BASE = FREQ_MIN
+    FREQ_SPACE = (FREQ_MAX - FREQ_MIN) / (2**TONE_BITS - 1)
+
+    # Input read size, in samples
+    INPUT_READ_SIZE = SAMPLE_RATE // TONES_PER_SECOND // INPUT_READ_FRACTION
+else:
+    # Frequency used for mark (1-bit). Should generally be set to match the
+    # baud rate, or double
+    FREQ_MARK = TONES_PER_SECOND
+    # Frequency used for space (0-bit). Should generally be set to match the
+    # baud rate, or double (opposite of mark frequency)
+    FREQ_SPACE = TONES_PER_SECOND*2

@@ -39,6 +39,7 @@ def bytes_to_tones(data: bytes) -> list[int]:
 
 def tones_to_bytes(tones: list[int]):
     if settings.MFSK:
+        # TODO Gray encode/decode bytes, not tones (and not only for MFSK)
         if settings.USE_GRAY_ENCODING:
             for i, gray_tone in enumerate(tones):
                 tones[i] = gray.from_gray(gray_tone)

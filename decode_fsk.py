@@ -1,4 +1,6 @@
-from typing import Optional
+from typing import Optional, Tuple
+from enum import Enum
+
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.signal import firwin, lfiltic, lfilter
@@ -7,6 +9,8 @@ import settings
 import test_wav
 import tone_conversion
 from digital_pll import DigitalPLL
+from packet import NoStartMarkerError, PacketChecksumError
+import packet
 
 
 START_MARKER_BITS = tone_conversion.bytes_to_tones(settings.START_MARKER)
@@ -37,10 +41,8 @@ def low_pass(samples: np.ndarray) -> np.ndarray:
     return np.append(result1, result2[len(lpf_coeffs)//2:])
 
 
-if __name__ == '__main__':
-    audio_data = test_wav.read()
-
-    # plt.plot(audio_data / 32768)
+def decode(samples: np.ndarray) -> bytes:
+    # plt.plot(samples / 32768)
 
     # Array of booleans, true where audio sample was positive
     audio_is_positive = audio_data > 0
@@ -75,12 +77,23 @@ if __name__ == '__main__':
 
     # plt.plot(clock)
 
+    # plt.show()
+
     start = find_start(bits)
-    assert start is not None
+    if start is None:
+        raise NoStartMarkerError()
 
-    print(tone_conversion.tones_to_bytes(bits[start:]))
+    message_bytes = tone_conversion.tones_to_bytes(bits[start:])
 
-    plt.show()
+    return packet.unpack(message_bytes)
+
+
+if __name__ == '__main__':
+    audio_data = test_wav.read()
+
+    message = decode(audio_data)
+
+    print('mesage', message)
 
 
 # some parts copied from https://github.com/mobilinkd/afsk-demodulator/

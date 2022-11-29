@@ -1,11 +1,9 @@
 import sys
 from typing import Iterable, Union
-import wave
-import struct
 
 import numpy as np
 
-import crc16
+import packet
 import tone_conversion
 import settings
 import smallgzip
@@ -76,17 +74,8 @@ def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
 
 
 def data_to_audio(data: bytes) -> np.ndarray:
-    if settings.DO_COMPRESS:
-        print('original size:', len(data))
-        print('original message:', data)
-        data = smallgzip.compress(data)
-
-    if len(data) > settings.MAX_PACKET_SIZE:
-        raise ValueError('message too long')
-
-    checksum = crc16.crc16(data)
-    header_bytes = struct.pack('>HH', len(data), checksum)
-    send_data = header_bytes + data
+    send_data = packet.pack(data)
+    print('header_bytes', send_data[:settings.PACKET_HEADER_SIZE])
 
     # MFSK uses sync sweep to find start, but non-M FSK has no such thing.
     # Prepend start marker to bitstream
@@ -95,8 +84,6 @@ def data_to_audio(data: bytes) -> np.ndarray:
 
     print('size:', len(data))
     print('message:', data)
-    print('checksum:', hex(checksum))
-    print('header_bytes', header_bytes)
     tones = tone_conversion.bytes_to_tones(send_data)
     print('tones:', tones)
     if settings.GAUSSIAN:
