@@ -1,8 +1,7 @@
-from typing import Optional, Tuple
-from enum import Enum
+from typing import Optional
+import sys
 
 import numpy as np
-from matplotlib import pyplot as plt
 from scipy.signal import firwin, lfiltic, lfilter
 
 import settings
@@ -21,6 +20,7 @@ def find_start(bits: np.ndarray) -> Optional[int]:
     for i, bit in enumerate(bits):
         if bit == START_MARKER_BITS[marker_pos]:
             marker_pos += 1
+            print(marker_pos)
             if marker_pos == len(START_MARKER_BITS):
                 return i + 1
         else:
@@ -41,29 +41,39 @@ def low_pass(samples: np.ndarray) -> np.ndarray:
     return np.append(result1, result2[len(lpf_coeffs)//2:])
 
 
-def decode(samples: np.ndarray) -> bytes:
-    # plt.plot(samples / 32768)
+def decode(samples: np.ndarray, plot_option: Optional[list[str]] = None) -> bytes:
+    assert not settings.MFSK
+
+    if plot_option:
+        from matplotlib import pyplot as plt
+
+    if 'audio' in plot_option:
+        plt.plot(samples / 32768)
 
     # Array of booleans, true where audio sample was positive
-    audio_is_positive = audio_data > 0
-    # plt.plot(audio_is_positive)
+    audio_is_positive = samples > 0
+    if 'audio_positive' in plot_option:
+        plt.plot(audio_is_positive)
 
     # Delay for comb filter should be half the sample rate
     delay = settings.SAMPLES_PER_TONE // 2
 
     xored = np.logical_xor(audio_is_positive[:-delay],
                            audio_is_positive[delay:])
-    plt.plot(xored)
+    if 'xored' in plot_option:
+        plt.plot(xored)
 
     # Low pass filter
     normalized = (xored - 0.5) * 2.0
     filtered = low_pass(normalized)
-    plt.plot(filtered)
+    if 'filtered' in plot_option:
+        plt.plot(filtered)
 
     # Convert to booleans again
     bits_signal = filtered > 0
 
-    # plt.plot(bits_signal)
+    if 'bits' in plot_option:
+        plt.plot(bits_signal)
 
     pll = DigitalPLL(settings.SAMPLE_RATE, settings.TONES_PER_SECOND)
     clock = np.zeros(len(bits_signal), dtype=int)
@@ -75,9 +85,13 @@ def decode(samples: np.ndarray) -> bytes:
         if is_sample:
             bits.append(int(bits_signal[i]))
 
-    # plt.plot(clock)
+    if 'clock' in plot_option:
+        plt.plot(clock)
 
-    # plt.show()
+    if plot_option:
+        plt.show()
+
+    print(bits)
 
     start = find_start(bits)
     if start is None:
@@ -90,8 +104,8 @@ def decode(samples: np.ndarray) -> bytes:
 
 if __name__ == '__main__':
     audio_data = test_wav.read()
-
-    message = decode(audio_data)
+    plot_option = [] if len(sys.argv) < 2 else sys.argv[1].split(',')
+    message = decode(audio_data, plot_option)
 
     print('mesage', message)
 

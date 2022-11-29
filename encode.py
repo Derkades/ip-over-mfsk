@@ -82,8 +82,8 @@ def data_to_audio(data: bytes) -> np.ndarray:
     if not settings.MFSK:
         send_data = settings.START_MARKER + send_data
 
-    print('size:', len(data))
-    print('message:', data)
+    print('size:', len(send_data))
+    print('transmission:', send_data)
     tones = tone_conversion.bytes_to_tones(send_data)
     print('tones:', tones)
     if settings.GAUSSIAN:

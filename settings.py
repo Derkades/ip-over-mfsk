@@ -55,10 +55,6 @@ if MFSK:
     # interpreted tones are all slightly too high.
     TONE_CALIBRATION_OFFSET = 0
 
-    # Gray-encode bytes before sending, and gray-decode after receiving. Seems
-    # to make no difference in transmission reliability.
-    USE_GRAY_ENCODING = False
-
     # Size of buffer when recording (number of samples). Should be large enough
     # to fit the entire sync sweep tone, but it does not have to be large
     # enough to fit an entire transmission.
@@ -71,12 +67,13 @@ else:
     # Number of tones per second, must be an integer divisor of sample rate.
     # Run valid_speeds.py for list of valid speeds.
     # Equal to resulting baud rate
-    TONES_PER_SECOND = 1920
+    TONES_PER_SECOND = 1200
 
     # Start marker to identify start of incoming transmission. Should be long
     # enough for the start marker to not occur in the message coincidentally,
     # but short enough to not introduce unnecessary overhead.
-    START_MARKER = b'RAPHBIN'
+    # 5 characters -> 1/256**5 = 1/1099511627776 chance
+    START_MARKER = b'RPHBN'
 
     # Number of seconds to wait between processing buffer (float)
     REALTIME_PROCESS_WAIT = 1
@@ -107,6 +104,10 @@ else:
 # since compressed bits are more "random" and more likely to include very
 # low and very high byte values, unlike ASCII.
 DO_COMPRESS = False
+
+# Gray-encode bytes before sending, and gray-decode after receiving. Seems
+# to make no difference in transmission reliability.
+USE_GRAY_ENCODING = False
 
 # Short, quiet noise to wake up audio interface and prevent artifacts at start
 # and end of transmission
