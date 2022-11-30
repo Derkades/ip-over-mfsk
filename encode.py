@@ -1,45 +1,44 @@
 import sys
-from typing import Iterable, Union
+from typing import Union
 
 import numpy as np
 
 import packet
 import tone_conversion
 import settings
-import smallgzip
 
 
-def reduce_click(samples: np.ndarray):
-    if settings.ANTICLICK_STOP_AT_FULL_PERIOD:
-        # Ensure sine wave ends at approx zero, at the end of a period
-        prev_sample = samples[-1]
-        for i in range(2, len(samples) + 1):
-            sample = samples[-i]
-            if sample < 0 and prev_sample > 0:
-                # Reached zero crossing point
-                for j in range(-i+1, 0):
-                    samples[j] = 0
-                break
-            prev_sample = sample
+# def reduce_click(samples: np.ndarray):
+#     if settings.ANTICLICK_STOP_AT_FULL_PERIOD:
+#         # Ensure sine wave ends at approx zero, at the end of a period
+#         prev_sample = samples[-1]
+#         for i in range(2, len(samples) + 1):
+#             sample = samples[-i]
+#             if sample < 0 and prev_sample > 0:
+#                 # Reached zero crossing point
+#                 for j in range(-i+1, 0):
+#                     samples[j] = 0
+#                 break
+#             prev_sample = sample
 
-    if settings.ANTICLICK_FADE:
-        # Add fade-in and fade-out
-        fade_count = settings.SAMPLES_PER_TONE // settings.ANTICLICK_FADE_AMOUNT
-        for i in range(0, fade_count):
-            vol_ratio = i / fade_count
-            samples[i] = int(samples[i] * vol_ratio)  # fade-in
-            samples[-i-1] = int(samples[-i-1] * vol_ratio)  # fade-out
+#     if settings.ANTICLICK_FADE:
+#         # Add fade-in and fade-out
+#         fade_count = settings.SAMPLES_PER_TONE // settings.ANTICLICK_FADE_AMOUNT
+#         for i in range(0, fade_count):
+#             vol_ratio = i / fade_count
+#             samples[i] = int(samples[i] * vol_ratio)  # fade-in
+#             samples[-i-1] = int(samples[-i-1] * vol_ratio)  # fade-out
 
 
-def tones_to_sine(tones: Iterable[int]) -> np.ndarray:
-    x = np.arange(settings.SAMPLES_PER_TONE)
-    data = []
-    for tone in tones:
-        freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
-        wave = settings.OUTPUT_MAX * np.sin(2 * np.pi * freq * x / settings.SAMPLE_RATE)
-        reduce_click(wave)
-        data.extend(wave)
-    return np.array(data, dtype='i2') # signed 16-bit integers
+# def tones_to_sine(tones: Iterable[int]) -> np.ndarray:
+#     x = np.arange(settings.SAMPLES_PER_TONE)
+#     data = []
+#     for tone in tones:
+#         freq = settings.FREQ_BASE + settings.FREQ_SPACE * tone
+#         wave = settings.OUTPUT_MAX * np.sin(2 * np.pi * freq * x / settings.SAMPLE_RATE)
+#         reduce_click(wave)
+#         data.extend(wave)
+#     return np.array(data, dtype='i2') # signed 16-bit integers
 
 
 def gauss_kernel() -> np.ndarray:
@@ -51,29 +50,46 @@ def gauss_kernel() -> np.ndarray:
 
 
 def tone_frequencies(tones: Union[int, np.ndarray]) -> np.ndarray:
-    return np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE, settings.SAMPLES_PER_TONE)
+    if settings.MFSK:
+        # Calculate frequency for all tones, then repeat according to
+        # SAMPLES_PER_TONE setting
+        return np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE, settings.SAMPLES_PER_TONE)
+    else:
+        # Convert 0/1 bit list into space/mark frequency list
+        freqs = np.zeros_like(tones, dtype='i2')
+        freqs[tones == 1] = settings.FREQ_MARK
+        freqs[tones == 0] = settings.FREQ_SPACE
+        # Repeat each frequency SAMPLES_PER_TONE times
+        return np.repeat(freqs, settings.SAMPLES_PER_TONE)
 
 
 def tones_to_sine_gauss(tones: np.ndarray) -> np.ndarray:
     if settings.MFSK:
-        freqs = np.repeat(tones * settings.FREQ_SPACE + settings.FREQ_BASE,
-                          settings.SAMPLES_PER_TONE)
+        # Create repeated frequencies array for tones
+        freqs = tone_frequencies(tones)
+        # Create sync signal, linear sweep from one frequency to another
         sync = np.linspace(settings.SYNC_SWEEP_END, settings.SYNC_SWEEP_BEGIN,
                            settings.SYNC_SWEEP_SAMPLES)
+        # Create end tone signal
         end = tone_frequencies(settings.SYNC_END_TONE)
+        # Join the above three arrays
         freqs = np.concatenate((sync, freqs, end))
     else:
-        freqs = np.zeros_like(tones, dtype='i2')
-        freqs[tones == 1] = settings.FREQ_MARK
-        freqs[tones == 0] = settings.FREQ_SPACE
-        freqs = np.repeat(freqs, settings.SAMPLES_PER_TONE)
+        freqs = tone_frequencies(tones)
 
+    # Convolve frequencies with guassian kernel to smooth transition from
+    # one frequency to another. This reduces "sideband power" as it is called
+    # in the RF world, or in the case of audio it is audible as loud clicking
     freqs_smooth = np.convolve(freqs, gauss_kernel(), mode='same')
+    # Convert frequency list to a sine wave signal with those frequencies
     sine = np.sin(np.cumsum(2 * np.pi * freqs_smooth) / settings.SAMPLE_RATE)
+    # Scale sine wave with amplitude 1 to the maximum 2 byte integer value
     return (sine * settings.OUTPUT_MAX).astype(dtype='i2')
 
 
 def data_to_audio(data: bytes) -> np.ndarray:
+    # Convert message to a packet. This adds a header with message size
+    # and checksum. It also compresses the message, if enabled.
     send_data = packet.pack(data)
     print('header_bytes', send_data[:settings.PACKET_HEADER_SIZE])
 
@@ -89,7 +105,8 @@ def data_to_audio(data: bytes) -> np.ndarray:
     if settings.GAUSSIAN:
         return tones_to_sine_gauss(np.array(tones))
     else:
-        return tones_to_sine(tones)
+        raise ValueError('non-gauss code is no longer up-to-date and temporarily disabled')
+        # return tones_to_sine(tones)
 
 
 if __name__ == '__main__':

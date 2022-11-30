@@ -40,15 +40,18 @@ class PacketChecksumError(PacketCorruptError):
 
 
 def pack(data: bytes) -> bytes:
+    # Compress data using modified gzip, if enabled
     if settings.DO_COMPRESS:
         print('original size:', len(data))
         original_size = len(data)
         data = smallgzip.compress(data)
         print(f'compressed from {original_size} to {len(data)}')
 
+    # Ensure message is not larger than maximum size
     if len(data) > settings.MAX_PACKET_SIZE:
         raise ValueError('message too long')
 
+    # Create header using checksum and message length
     checksum = crc16.crc16(data)
     header_bytes = struct.pack('>HH', len(data), checksum)
 
@@ -76,19 +79,24 @@ def unpack(data: bytes) -> bytes:
 
     size, checksum = struct.unpack('>HH', header_bytes)
 
+    # Size should never be larger than maximum, this indicates the size
+    # got corrupted during transmission
     if size > settings.MAX_PACKET_SIZE:
         raise PacketCorruptError('Packet too large')
 
+    # Make sure we have received enough bytes to contain the entire message
     if size > len(message_bytes):
         raise PacketIncompleteError('Packet header claims size ' + str(size) + ' but we have only received ' + str(len(message_bytes) - 4))
 
+    # Truncate message to the size indicated in packet header
     message_bytes = message_bytes[:size]
 
+    # Calculate message checksum, verify that it matches checksum in header
     message_checksum = crc16.crc16(message_bytes)
-
     if checksum != message_checksum:
         raise PacketChecksumError(checksum, message_checksum, message_bytes)
 
+    # Decompress if compression was enabled
     if settings.DO_COMPRESS:
         message_bytes = smallgzip.decompress(message_bytes)
 

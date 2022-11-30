@@ -57,26 +57,35 @@ def decode(samples: np.ndarray, plot_option: list[str] = []) -> bytes:
     # Delay for comb filter should be half the sample rate
     delay = settings.SAMPLES_PER_TONE // 2
 
+    # Comb filter using delay. Results in a spikey signal, with more spikes in
+    # higher frequency areas.
     xored = np.logical_xor(audio_is_positive[:-delay],
                            audio_is_positive[delay:])
+
     if 'xored' in plot_option:
         plt.plot(xored)
 
-    # Low pass filter
+    # Run spikey signal through low pass filter. Sections with many spikes
+    # will result in a high signal, sections with few spikes in a low signal.
     normalized = (xored - 0.5) * 2.0
     filtered = low_pass(normalized)
     if 'filtered' in plot_option:
         plt.plot(filtered)
 
-    # Convert to booleans again
+    # Convert to booleans. Now, all sections with many spikes are "true"
+    # and sections with few spikes are "false".
     bits_signal = filtered > 0
 
     if 'bits' in plot_option:
         plt.plot(bits_signal)
 
+    # Recover timing information using code from the internet which I have
+    # not attempted to understand.
     pll = DigitalPLL(settings.SAMPLE_RATE, settings.TONES_PER_SECOND)
     clock = np.zeros(len(bits_signal), dtype=int)
 
+    # Whenever the clock signal is on, save a 1 or 0 bit depending on whether
+    # bits_signal has a True or False boolean at that time position
     bits = []
     for i in range(len(bits_signal)):
         is_sample = pll(bits_signal[i])
@@ -92,6 +101,7 @@ def decode(samples: np.ndarray, plot_option: list[str] = []) -> bytes:
 
     # print(bits)
 
+    # Try to find start marker (magic bit sequence) in bits list
     start = find_start(bits)
     if start is None:
         raise NoStartMarkerError()

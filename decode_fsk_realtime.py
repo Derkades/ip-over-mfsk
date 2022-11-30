@@ -29,16 +29,14 @@ class AudioProcessor(Thread):
             self.process()
             time.sleep(settings.REALTIME_PROCESS_SLEEP)
 
-    def update_buffer(self, buffer: np.ndarray, buffer_pos: int):
-        self.buffer = buffer
-        self.buffer_pos = buffer_pos
-
     def add_samples(self, samples: np.ndarray):
+        # Add samples to our buffer, and move buffer_pos accordingly
         for i in range(len(samples)):
             self.buffer[self.buffer_pos % settings.REALTIME_PROCESS_BUFFER_SIZE] = samples[i] * settings.OUTPUT_MAX
             self.buffer_pos += 1
 
-    def get_buffer_as_array(self, start, count):
+    def get_buffer_as_array(self, start: int, count: int) -> np.ndarray:
+        # Convert buffer to an array with oldest sample at 0.
         copy = np.zeros(count, dtype='i2')
         for i in range(0, count):
             copy[i] = self.buffer[(start + i) % settings.REALTIME_PROCESS_BUFFER_SIZE]
@@ -58,6 +56,7 @@ class AudioProcessor(Thread):
 
         print(f'processing {len(samples)} samples, from pos', self.processed_to_pos)
 
+        # Try to decode samples into a message
         try:
             message = decode_fsk.decode(samples)
             print('=> RECEIVED MESSAGE', message)
@@ -92,6 +91,10 @@ class AudioReceiver:
         def callback(indata, frames, time, status):
             self.process(indata)
 
+        # Listen to audio input indefinitely. A high latency means a larger
+        # buffer is used, so a smaller chance of data being lost if the
+        # program or audio backend briefly hangs. The callback function is
+        # called repeatedly (many times per second) with incoming data.
         with sd.InputStream(samplerate=settings.SAMPLE_RATE, latency='high', channels=1, callback=callback):
             while True:
                 sd.sleep(1000)

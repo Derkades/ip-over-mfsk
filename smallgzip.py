@@ -16,11 +16,13 @@ import gzip
 
 
 def compress(data: bytes) -> bytes:
+    # Compress, then remove some bytes that are always constant
     compressed = gzip.compress(data)
     return compressed[10:-2]
 
 
 def decompress(data: bytes) -> bytes:
+    # Add bytes that were removed, before passing the data to gzip
     magic = b'\x1f\x8b'
     comp_method = b'\x08'
     header_flags = b'\0'
