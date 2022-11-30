@@ -76,9 +76,10 @@ else:
     START_MARKER = b'RPHBN'
 
     # Number of seconds to wait between processing buffer (float)
-    REALTIME_PROCESS_WAIT = 1
-    # Buffer size, must fit entire transmission
-    RECORD_BUFFER_SIZE = 10*1024*1024
+    REALTIME_PROCESS_SLEEP = 1
+    # Buffer size, must fit entire transmission. Run stats.py to calculate
+    # maximum transmisison size
+    REALTIME_PROCESS_BUFFER_SIZE = 1*1024*1024
 
 # Samples per tone, calculated from sample rate and tones per
 # second. Verified to integer divisible.

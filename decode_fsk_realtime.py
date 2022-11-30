@@ -20,14 +20,14 @@ class AudioProcessor(Thread):
 
     def __init__(self):
         super().__init__(daemon=True)
-        self.buffer = np.zeros(dtype='i2')
+        self.buffer = np.zeros(settings.settings.REALTIME_PROCESS_BUFFER_SIZE, dtype='i2')
         self.buffer_pos = 0
         self.processed_to_pos = 0
 
     def run(self):
         while True:
             self.process()
-            time.sleep(settings.REALTIME_PROCESS_WAIT)
+            time.sleep(settings.REALTIME_PROCESS_SLEEP)
 
     def update_buffer(self, buffer: np.ndarray, buffer_pos: int):
         self.buffer = buffer
@@ -48,12 +48,19 @@ class AudioProcessor(Thread):
 
         try:
             message = decode_fsk.decode(samples)
-            print('message', message)
+            print('RECEIVED MESSAGE', message)
         except NoStartMarkerError:
             # No start marker was found. End of our buffer may contain start marker.
             # Keep end of buffer, the size of a start marker, and discard everything else.
             self.processed_to_pos = max(0, self.buffer_pos - START_MARKER_SAMPLES)
-        # TODO handle other exceptions
+        except PacketIncompleteError:
+            # Packet is incomplete, wait for more data
+            print('incomplete')
+            pass
+        except PacketCorruptError:
+            # Packet is corrupt, discard received data by marking all as processed
+            print('corrupt')
+            self.processed_to_pos = self.buffer_pos
 
         print('done processing, took', (time.time_ns() - start_time) // 1000000, 'ms')
         self.need_process = False

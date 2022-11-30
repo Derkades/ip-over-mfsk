@@ -17,7 +17,10 @@ else:
     overhead = (settings.NOISE_SAMPLES*2 + len(settings.START_MARKER)*8*settings.SAMPLES_PER_TONE) / settings.SAMPLE_RATE
 
 print('max packet size:'.ljust(ljust), settings.MAX_PACKET_SIZE, '+', settings.PACKET_HEADER_SIZE, 'bytes')
-print('max size, encoded:'.ljust(ljust), int((settings.MAX_PACKET_SIZE+settings.PACKET_HEADER_SIZE)*8/settings.TONES_PER_SECOND*settings.SAMPLE_RATE*2/1024/1024), 'MiB')
+encoded_samples = (settings.MAX_PACKET_SIZE+settings.PACKET_HEADER_SIZE)*8*settings.SAMPLES_PER_TONE
+print('max size, encoded:'.ljust(ljust), f'{encoded_samples} samples, {encoded_samples*2/1024/1024:.1f} MiB')
+# buf_size = round(math.log2(encoded_samples) + 1)
+# print('recommended buffer size:'.ljust(ljust), f'2**{buf_size} = {2**buf_size}')
 print('samples per tone:'.ljust(ljust), settings.SAMPLES_PER_TONE)
 print('transmission overhead:'.ljust(ljust), f'{overhead:.1f} seconds')
 print()
