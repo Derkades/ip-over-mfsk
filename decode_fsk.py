@@ -20,7 +20,6 @@ def find_start(bits: np.ndarray) -> Optional[int]:
     for i, bit in enumerate(bits):
         if bit == START_MARKER_BITS[marker_pos]:
             marker_pos += 1
-            print(marker_pos)
             if marker_pos == len(START_MARKER_BITS):
                 return i + 1
         else:
@@ -41,7 +40,7 @@ def low_pass(samples: np.ndarray) -> np.ndarray:
     return np.append(result1, result2[len(lpf_coeffs)//2:])
 
 
-def decode(samples: np.ndarray, plot_option: Optional[list[str]] = None) -> bytes:
+def decode(samples: np.ndarray, plot_option: list[str] = []) -> bytes:
     assert not settings.MFSK
 
     if plot_option:
@@ -91,7 +90,7 @@ def decode(samples: np.ndarray, plot_option: Optional[list[str]] = None) -> byte
     if plot_option:
         plt.show()
 
-    print(bits)
+    # print(bits)
 
     start = find_start(bits)
     if start is None:

@@ -80,6 +80,8 @@ else:
     # Buffer size, must fit entire transmission. Run stats.py to calculate
     # maximum transmisison size
     REALTIME_PROCESS_BUFFER_SIZE = 1*1024*1024
+    # Minimum samples to process
+    REALTIME_PROCESS_MINIMUM = 5000
 
 # Samples per tone, calculated from sample rate and tones per
 # second. Verified to integer divisible.

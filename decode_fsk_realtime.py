@@ -20,7 +20,7 @@ class AudioProcessor(Thread):
 
     def __init__(self):
         super().__init__(daemon=True)
-        self.buffer = np.zeros(settings.settings.REALTIME_PROCESS_BUFFER_SIZE, dtype='i2')
+        self.buffer = np.zeros(settings.REALTIME_PROCESS_BUFFER_SIZE, dtype='i2')
         self.buffer_pos = 0
         self.processed_to_pos = 0
 
@@ -33,34 +33,47 @@ class AudioProcessor(Thread):
         self.buffer = buffer
         self.buffer_pos = buffer_pos
 
+    def add_samples(self, samples: np.ndarray):
+        for i in range(len(samples)):
+            self.buffer[self.buffer_pos % settings.REALTIME_PROCESS_BUFFER_SIZE] = samples[i] * settings.OUTPUT_MAX
+            self.buffer_pos += 1
+
     def get_buffer_as_array(self, start, count):
         copy = np.zeros(count, dtype='i2')
         for i in range(0, count):
-            copy[i] = self.buffer[(start + i) % settings.RECORD_BUFFER_SIZE]
+            copy[i] = self.buffer[(start + i) % settings.REALTIME_PROCESS_BUFFER_SIZE]
         return copy
 
     def process(self):
         start_time = time.time_ns()
         print('start processing')
 
-        samples = self.get_buffer_as_array(self.processed_to_pos, self.buffer_pos)
-        print(f'processing {len(samples)} samples')
+        # New data samples may be added while this function is running, remember current pos
+        buffer_pos = self.buffer_pos
+        samples = self.get_buffer_as_array(self.processed_to_pos, buffer_pos - self.processed_to_pos)
+
+        if len(samples) < settings.REALTIME_PROCESS_MINIMUM:
+            print('waiting for more samples')
+            return
+
+        print(f'processing {len(samples)} samples, from pos', self.processed_to_pos)
 
         try:
             message = decode_fsk.decode(samples)
-            print('RECEIVED MESSAGE', message)
+            print('=> RECEIVED MESSAGE', message)
         except NoStartMarkerError:
             # No start marker was found. End of our buffer may contain start marker.
             # Keep end of buffer, the size of a start marker, and discard everything else.
-            self.processed_to_pos = max(0, self.buffer_pos - START_MARKER_SAMPLES)
+            self.processed_to_pos = max(0, buffer_pos - START_MARKER_SAMPLES)
+            print('=> no start marker')
         except PacketIncompleteError:
             # Packet is incomplete, wait for more data
-            print('incomplete')
+            print('=> incomplete')
             pass
         except PacketCorruptError:
             # Packet is corrupt, discard received data by marking all as processed
-            print('corrupt')
-            self.processed_to_pos = self.buffer_pos
+            print('=> corrupt')
+            self.processed_to_pos = buffer_pos
 
         print('done processing, took', (time.time_ns() - start_time) // 1000000, 'ms')
         self.need_process = False
@@ -73,14 +86,7 @@ class AudioReceiver:
         self.processor = processor
 
     def process(self, samples: np.ndarray) -> None:
-        pos = self.processor.buffer_pos
-        buf = self.processor.buffer
-
-        for i in range(len(samples)):
-            buf[pos % settings.RECORD_BUFFER_SIZE] = samples[i] * settings.OUTPUT_MAX
-            pos += 1
-
-        self.processor.buffer_pos = pos
+        self.processor.add_samples(samples)
 
     def run(self):
         def callback(indata, frames, time, status):
