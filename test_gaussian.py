@@ -2,11 +2,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 import settings
+import encode
 
+assert settings.MFSK
+assert settings.TONE_BITS == 4
 
 tones = np.array([2, 5, 6, 3, 5, 2, 3])
-freqs = tones * settings.FREQ_SPACE + settings.FREQ_BASE
-freqs_repeated = np.repeat(freqs, settings.SAMPLES_PER_TONE)
+freqs_repeated = encode.tone_frequencies(tones)
 
 # Convolution with cosine kernel, centered with peak at x=0
 kernel_x = np.linspace(-np.pi, np.pi, settings.SAMPLES_PER_TONE // 2)
