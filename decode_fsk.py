@@ -8,8 +8,11 @@ import settings
 import test_wav
 import tone_conversion
 from digital_pll import DigitalPLL
-from packet import NoStartMarkerError, PacketChecksumError
+from packet import NoStartMarkerError
 import packet
+
+
+assert not settings.MFSK
 
 
 START_MARKER_BITS = tone_conversion.bytes_to_tones(settings.START_MARKER)

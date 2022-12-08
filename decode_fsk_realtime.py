@@ -1,4 +1,3 @@
-from enum import Enum
 from threading import Thread
 import time
 
@@ -35,7 +34,7 @@ class AudioProcessor(Thread):
             self.buffer[self.buffer_pos % settings.REALTIME_PROCESS_BUFFER_SIZE] = samples[i] * settings.OUTPUT_MAX
             self.buffer_pos += 1
 
-    def get_buffer_as_array(self, start: int, count: int) -> np.ndarray:
+    def get_buffer_as_continuous_array(self, start: int, count: int) -> np.ndarray:
         # Convert buffer to an array with oldest sample at 0.
         copy = np.zeros(count, dtype='i2')
         for i in range(0, count):
@@ -48,18 +47,19 @@ class AudioProcessor(Thread):
 
         # New data samples may be added while this function is running, remember current pos
         buffer_pos = self.buffer_pos
-        samples = self.get_buffer_as_array(self.processed_to_pos, buffer_pos - self.processed_to_pos)
+        samples = self.get_buffer_as_continuous_array(self.processed_to_pos, buffer_pos - self.processed_to_pos)
 
         if len(samples) < settings.REALTIME_PROCESS_MINIMUM:
             print('waiting for more samples')
             return
 
-        print(f'processing {len(samples)} samples, from pos', self.processed_to_pos)
+        print(f'processing {len(samples)} samples ({len(samples)/settings.SAMPLE_RATE:.1f} seconds), from pos', self.processed_to_pos)
 
         # Try to decode samples into a message
         try:
             message = decode_fsk.decode(samples)
             print('=> RECEIVED MESSAGE', message)
+            self.processed_to_pos = buffer_pos
         except NoStartMarkerError:
             # No start marker was found. End of our buffer may contain start marker.
             # Keep end of buffer, the size of a start marker, and discard everything else.
@@ -88,7 +88,7 @@ class AudioReceiver:
         self.processor.add_samples(samples)
 
     def run(self):
-        def callback(indata, frames, time, status):
+        def callback(indata, _frames, _time, _status):
             self.process(indata)
 
         # Listen to audio input indefinitely. A high latency means a larger

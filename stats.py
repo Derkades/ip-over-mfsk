@@ -18,7 +18,7 @@ else:
 
 print('max packet size:'.ljust(ljust), settings.MAX_PACKET_SIZE, '+', settings.PACKET_HEADER_SIZE, 'bytes')
 encoded_samples = (settings.MAX_PACKET_SIZE+settings.PACKET_HEADER_SIZE)*8*settings.SAMPLES_PER_TONE
-print('max size, encoded:'.ljust(ljust), f'{encoded_samples} samples, {encoded_samples*2/1024/1024:.1f} MiB')
+print('max audio size:'.ljust(ljust), f'{encoded_samples} samples, {encoded_samples*2/1024/1024:.1f} MiB')
 # buf_size = round(math.log2(encoded_samples) + 1)
 # print('recommended buffer size:'.ljust(ljust), f'2**{buf_size} = {2**buf_size}')
 print('samples per tone:'.ljust(ljust), settings.SAMPLES_PER_TONE)
